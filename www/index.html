@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ca">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Meeting Viewer - Split-Flap Board</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <!-- Marc exterior del panell mecànic -->
+  <div class="station-board-container" id="boardContainer">
+
+    <!-- Capçalera del panell estil estació -->
+    <header class="board-header">
+      <div class="header-left">
+        <span class="station-crest">●</span>
+        <h1 class="board-title" id="lblBoardTitle">PANEL D'INFORMACIÓ</h1>
+      </div>
+
+      <div class="header-center" id="boardClock">
+        <span class="clock-time" id="clockTime">--:--:--</span>
+        <span class="clock-date" id="clockDate">--- -- ---</span>
+      </div>
+
+      <div class="header-right">
+        <!-- Indicador d'estat de connexió ràpid -->
+        <div class="connection-status" id="connectionStatusBadge">
+          <span class="status-dot disconnected" id="statusDot"></span>
+          <span class="status-text" id="statusText">NO CONNECTAT</span>
+        </div>
+
+        <!-- Botó de so atenuat ràpid -->
+        <button id="btnToggleSound" class="btn-config-discrete" title="Activar / Desactivar so" aria-label="So">
+          <svg id="iconSoundOn" viewBox="0 0 24 24" width="22" height="22">
+            <path fill="currentColor"
+              d="M14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77zm-2.5 9.77H8.5V9h3l3.5-3.5v13l-3.5-3.5zM16.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z" />
+          </svg>
+          <svg id="iconSoundOff" viewBox="0 0 24 24" width="22" height="22" style="display: none;">
+            <path fill="currentColor"
+              d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z" />
+          </svg>
+        </button>
+
+        <!-- Botó Finestra Neta / Mode App (sense barres de navegador) -->
+        <button id="btnOpenAppWindow" class="btn-config-discrete" title="Obrir en finestra neta (sense barres de navegador per encaixar a Windows)" aria-label="Finestra neta">
+          <svg viewBox="0 0 24 24" width="22" height="22">
+            <path fill="currentColor" d="M19 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 2v2H5V6h14zm0 12H5V10h14v8z"/>
+          </svg>
+        </button>
+
+        <!-- Botó Pantalla Completa (F11) -->
+        <button id="btnToggleFullscreen" class="btn-config-discrete" title="Pantalla completa"
+          aria-label="Pantalla completa">
+          <svg id="iconFullscreenEnter" viewBox="0 0 24 24" width="22" height="22">
+            <path fill="currentColor"
+              d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" />
+          </svg>
+          <svg id="iconFullscreenExit" viewBox="0 0 24 24" width="22" height="22" style="display: none;">
+            <path fill="currentColor"
+              d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z" />
+          </svg>
+        </button>
+
+        <!-- Botó de configuració atenuat a la cantonada superior dreta -->
+        <button id="btnOpenConfig" class="btn-config-discrete" title="Configuració" aria-label="Configuració">
+          <svg class="gear-icon" viewBox="0 0 24 24" width="24" height="24">
+            <path fill="currentColor"
+              d="M12 15.5A3.5 3.5 0 0 1 8.5 12 3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.53c.04-.32.07-.64.07-.97 0-.33-.03-.66-.07-1l2.11-1.63c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.31-.61-.22l-2.49 1c-.52-.39-1.06-.73-1.69-.98l-.37-2.65A.506.506 0 0 0 14 2h-4c-.25 0-.46.18-.5.42l-.37 2.65c-.63.25-1.17.59-1.69.98l-2.49-1c-.22-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64L4.57 11c-.04.34-.07.67-.07 1 0 .33.03.65.07.97l-2.11 1.66c-.19.15-.25.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1.01c.52.4 1.06.74 1.69.99l.37 2.65c.04.24.25.42.5.42h4c.25 0 .46-.18.5-.42l.37-2.65c.63-.26 1.17-.59 1.69-.99l2.49 1.01c.22.08.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.66Z" />
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Barra de capçalera de columnes mecàniques -->
+    <div class="board-column-headers" id="columnHeaders">
+      <div class="col-head col-time" id="colHeadTime">HORA</div>
+      <div class="col-head col-event" id="colHeadEvent">CONVOCATÒRIA</div>
+      <div class="col-head col-loc" id="colHeadLoc">LLOC / SALA</div>
+      <div class="col-head col-status" id="colHeadStatus">ESTAT</div>
+      <div class="col-head col-led" id="colHeadLed"></div>
+    </div>
+
+    <!-- Cos principal de les files split-flap -->
+    <main class="board-body" id="boardBody">
+      <!-- Les files es generen automàticament via JavaScript per adaptar-se a l'alçada -->
+    </main>
+
+      <!-- Franja inferior: selector de calendaris sincronitzats -->
+      <footer class="calendar-filter-bar" id="calendarFilterBar">
+        <span class="filter-label" id="lblFilterTitle">CALENDARI:</span>
+        <div class="filter-pills" id="filterPillsContainer">
+          <!-- Es generen dinàmicament per JavaScript -->
+        </div>
+
+        <!-- Enllaç i logotip Calaix Àgil a la cantonada inferior dreta -->
+        <a href="https://www.calaixagil.com" target="_blank" rel="noopener noreferrer" class="brand-link" title="Calaix Àgil">
+          <div class="brand-logo-badge">
+            <img src="img/logo_calaixagil.svg" alt="Calaix Àgil" class="brand-logo">
+          </div>
+          <span class="brand-text">calaixagil.com</span>
+        </a>
+      </footer>
+  </div>
+
+  <!-- Modal de Configuració -->
+  <div class="modal-overlay" id="configModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="modalTitle">Configuració del Panell</h2>
+        <button class="btn-close" id="btnCloseConfig" aria-label="Tancar">&times;</button>
+      </div>
+
+      <div class="modal-body">
+
+        <!-- Secció d'Idioma -->
+        <div class="config-group">
+          <label for="selectLanguage" id="lblLanguage">Idioma del Panell:</label>
+          <select id="selectLanguage" class="form-control">
+            <option value="ca">Català</option>
+            <option value="es">Español</option>
+            <option value="en">English</option>
+          </select>
+        </div>
+
+        <!-- Secció Títol Personalitzat del Panell -->
+        <div class="config-group">
+          <label for="inputBoardTitle" id="lblCustomTitle">Títol del Panell:</label>
+          <input type="text" id="inputBoardTitle" class="form-control" placeholder="PANELL D'INFORMACIÓ" maxlength="32">
+          <p class="config-hint" id="hintCustomTitle">
+            Personalitza el text principal que apareix a la cantonada superior esquerra.
+          </p>
+        </div>
+
+        <!-- Secció Gestió de Calendaris Sincronitzables -->
+        <div class="config-group">
+          <label id="lblCalendarsTitle">Calendaris Sincronitzats:</label>
+
+          <!-- Llista de calendaris existents -->
+          <div class="calendars-list" id="calendarsListContainer">
+            <!-- Es renderitza dinàmicament via JavaScript -->
+          </div>
+
+          <!-- Formulari per afegir un nou calendari -->
+          <div class="add-calendar-box">
+            <div class="add-cal-row">
+              <input type="text" id="inputNewCalName" class="form-control"
+                placeholder="Nom del calendari (ex: Personal, Feina, UOC)" style="flex: 1;">
+            </div>
+            <div class="add-cal-row">
+              <input type="url" id="inputNewCalUrl" class="form-control" placeholder="Adreça secreta iCal (.ics)"
+                style="flex: 1;">
+              <button id="btnAddCalendar" class="btn btn-primary btn-sm">＋ Afegir</button>
+            </div>
+          </div>
+          <p class="config-hint" id="calendarsHelpText">
+            Afegeix els teus calendaris mitjançant l'Adreça secreta en format iCal (.ics). Activa o desactiva la casella
+            per triar quins es mostren al panell.
+          </p>
+        </div>
+
+        <!-- Secció Freqüència de Refresc Automàtic -->
+        <div class="config-group">
+          <label for="selectRefreshInterval" id="lblRefreshInterval">Freqüència de refresc automàtic:</label>
+          <select id="selectRefreshInterval" class="form-control">
+            <option value="30" id="optRefresh30">Cada 30 segons</option>
+            <option value="60" id="optRefresh60" selected>Cada 1 minut (Recomanat)</option>
+            <option value="120" id="optRefresh120">Cada 2 minuts</option>
+            <option value="300" id="optRefresh300">Cada 5 minuts</option>
+          </select>
+        </div>
+
+        <!-- Secció Mode Simulació / Demo -->
+        <div class="config-group toggle-group">
+          <label for="toggleDemoMode" id="lblDemoMode">Mode de demostració (convocatòries simulades):</label>
+          <label class="switch">
+            <input type="checkbox" id="toggleDemoMode">
+            <span class="slider round"></span>
+          </label>
+        </div>
+
+        <!-- Secció Efectes de So Mecànic -->
+        <div class="config-group toggle-group">
+          <label for="toggleSound" id="lblSound">Efecte de so mecànic de les lletres:</label>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <button type="button" id="btnTestSound" class="btn btn-secondary btn-sm">▶ Provar so</button>
+            <label class="switch">
+              <input type="checkbox" id="toggleSound" checked>
+              <span class="slider round"></span>
+            </label>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="modal-footer">
+        <button id="btnApplyAndClose" class="btn btn-primary">Acceptar i tancar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+
+</html>

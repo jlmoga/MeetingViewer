@@ -1,0 +1,851 @@
+/* ============================================================
+   MEETING VIEWER - SPLIT-FLAP STATION DISPLAY
+   Inspirat en els panells mecànics Solari d'estacions i aeroports
+   ============================================================ */
+
+:root {
+  --board-bg: #0a0b0e;
+  --bezel-color: #16191f;
+  --bezel-border: #252b36;
+  --flap-bg: #121418;
+  --flap-border: #1e222a;
+  --flap-split: #07080a;
+  --flap-text-default: #f4f6fa;
+  --flap-text-yellow: #ffc800;
+  --flap-text-green: #2ecc71;
+  --flap-text-red: #e74c3c;
+  --flap-text-dim: #3a414e;
+  --header-bg: #14171d;
+  --accent-gold: #f5b041;
+  --led-off: #20242c;
+  --led-green: #2ecc71;
+  --led-yellow: #f1c40f;
+  --led-red: #e74c3c;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+html, body {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background-color: #060709;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: var(--flap-text-default);
+}
+
+/* ==========================================
+   MARC PRINCIPAL DEL PANELL D'ESTACIÓ
+   ========================================== */
+
+.station-board-container {
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+  padding: 10px 14px;
+  background: radial-gradient(circle at 50% 25%, #141720 0%, #07080a 100%);
+  box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.95);
+  border: 10px solid #1a1e26;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Capçalera de l'estació */
+.board-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 18px;
+  background: linear-gradient(180deg, #222733 0%, #13161c 100%);
+  border: 1px solid #2f3645;
+  border-radius: 5px;
+  margin-bottom: 8px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.7);
+  flex-shrink: 0;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.station-crest {
+  color: var(--accent-gold);
+  font-size: 1.2rem;
+  text-shadow: 0 0 10px rgba(245, 176, 65, 0.7);
+}
+
+.board-title {
+  font-family: 'Arial Black', Impact, 'Trebuchet MS', sans-serif;
+  letter-spacing: 5px;
+  font-size: 1.65rem;
+  color: #f8fafc;
+  text-transform: uppercase;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9), 0 0 12px rgba(255, 255, 255, 0.25);
+}
+
+.header-center {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  background: #07090c;
+  padding: 5px 20px;
+  border-radius: 4px;
+  border: 1px solid #222733;
+  box-shadow: inset 0 2px 6px rgba(0,0,0,0.9);
+}
+
+.clock-time {
+  font-family: "Courier New", Courier, monospace;
+  font-weight: 900;
+  font-size: 1.6rem;
+  color: #00ff66;
+  text-shadow: 0 0 12px rgba(0, 255, 102, 0.6);
+  letter-spacing: 2px;
+}
+
+.clock-date {
+  font-family: 'Arial', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #94a3b8;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: #94a3b8;
+  background: rgba(0,0,0,0.5);
+  padding: 5px 12px;
+  border-radius: 14px;
+  border: 1px solid #232835;
+}
+
+.status-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status-dot.disconnected {
+  background-color: var(--flap-text-red);
+  box-shadow: 0 0 8px var(--flap-text-red);
+}
+
+.status-dot.connected {
+  background-color: var(--flap-text-green);
+  box-shadow: 0 0 8px var(--flap-text-green);
+}
+
+.status-dot.demo {
+  background-color: var(--flap-text-yellow);
+  box-shadow: 0 0 8px var(--flap-text-yellow);
+}
+
+/* Botó de configuració atenuat a la cantonada superior dreta */
+.btn-config-discrete {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #cbd5e1;
+  opacity: 0.30;
+  padding: 6px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.3s ease, transform 0.25s ease, background 0.2s ease;
+}
+
+.btn-config-discrete:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.12);
+  transform: rotate(45deg);
+}
+
+.btn-config-discrete:active {
+  transform: scale(0.9) rotate(90deg);
+}
+
+.btn-config-discrete svg {
+  pointer-events: none;
+}
+
+/* ==========================================
+   SELECTOR RÀPID DE CALENDARIS (PEU INFERIOR)
+   ========================================== */
+
+.calendar-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 6px 14px;
+  background: #090b0e;
+  border: 1px solid #1e222b;
+  border-radius: 4px;
+  margin-top: 6px;
+  margin-bottom: 0;
+  flex-shrink: 0;
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.9);
+  height: 44px;
+  overflow: hidden;
+}
+
+.filter-label {
+  font-family: Arial, sans-serif;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: var(--flap-text-yellow);
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.filter-pills {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  align-items: center;
+  scrollbar-width: none;
+  flex: 1;
+}
+
+.filter-pills::-webkit-scrollbar {
+  display: none;
+}
+
+.filter-pill {
+  background: #141820;
+  border: 1px solid #28303d;
+  color: #94a3b8;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-weight: 800;
+  font-size: 0.82rem;
+  letter-spacing: 1.5px;
+  padding: 5px 14px;
+  border-radius: 14px;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+}
+
+.filter-pill:hover {
+  background: #252d3a;
+  color: #ffffff;
+  border-color: #4a5568;
+}
+
+.filter-pill.active {
+  background: radial-gradient(circle at 50% 50%, #2f2510 0%, #1f190a 100%);
+  color: #ffd000 !important;
+  border-color: #ffd000;
+  box-shadow: 0 0 10px rgba(255, 208, 0, 0.4), inset 0 1px 2px rgba(255, 208, 0, 0.3);
+  text-shadow: 0 0 8px rgba(255, 208, 0, 0.6);
+}
+
+/* ==========================================
+   ENLLAÇ I LOGOTIP CALAIX ÀGIL (CANTONADA INFERIOR DRETA)
+   ========================================== */
+
+.brand-link {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  text-decoration: none;
+  background: #11141c;
+  border: 1px solid #232b38;
+  padding: 3px 10px;
+  border-radius: 14px;
+  margin-left: auto;
+  flex-shrink: 0;
+  height: 30px;
+  transition: all 0.25s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+
+.brand-link:hover {
+  background: #1a202c;
+  border-color: #fcde03;
+  transform: translateY(-1px);
+  box-shadow: 0 0 10px rgba(252, 222, 3, 0.35);
+}
+
+.brand-logo-badge {
+  background: #ffffff;
+  padding: 2px 5px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+}
+
+.brand-logo {
+  height: 16px;
+  width: auto;
+  display: block;
+}
+
+.brand-text {
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #94a3b8;
+  text-transform: lowercase;
+  transition: color 0.2s;
+}
+
+.brand-link:hover .brand-text {
+  color: #fcde03;
+}
+
+/* ==========================================
+   CAPÇALERES DE COLUMNES MECÀNIQUES
+   ========================================== */
+
+.board-column-headers {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  background: #101217;
+  border: 1px solid #1f232b;
+  border-radius: 4px 4px 0 0;
+  margin-bottom: 3px;
+  flex-shrink: 0;
+  gap: 12px;
+}
+
+.col-head {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 0.8rem;
+  font-weight: 900;
+  letter-spacing: 2.5px;
+  color: #8392a5;
+  text-transform: uppercase;
+}
+
+.col-time   { width: 220px; flex-shrink: 0; }
+.col-event  { flex: 3; }
+.col-loc    { flex: 2; }
+.col-status { width: 230px; flex-shrink: 0; }
+.col-led    { width: 36px; flex-shrink: 0; text-align: center; }
+
+/* ==========================================
+   COS DEL PANELL (FILES MECÀNIQUES)
+   ========================================== */
+
+.board-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 6px;
+  overflow: hidden;
+  padding: 4px 0;
+}
+
+.board-row {
+  display: flex;
+  align-items: center;
+  background: #0b0d10;
+  border: 1px solid #1a1e26;
+  border-radius: 4px;
+  padding: 4px 10px;
+  box-shadow: inset 0 2px 5px rgba(0,0,0,0.9), 0 2px 4px rgba(0,0,0,0.5);
+  gap: 12px;
+  flex: 1;
+  min-height: 38px;
+  max-height: 58px;
+}
+
+/* Columnes a les files */
+.row-col-time   { width: 220px; flex-shrink: 0; display: flex; gap: 3px; height: 100%; align-items: center; }
+.row-col-event  { flex: 3; display: flex; gap: 3px; height: 100%; align-items: center; overflow: hidden; }
+.row-col-loc    { flex: 2; display: flex; gap: 3px; height: 100%; align-items: center; overflow: hidden; }
+.row-col-status { width: 230px; flex-shrink: 0; display: flex; gap: 3px; height: 100%; align-items: center; }
+.row-col-led    { width: 36px; flex-shrink: 0; display: flex; justify-content: center; align-items: center; height: 100%; }
+
+/* ==========================================
+   FITXA MECÀNICA SPLIT-FLAP (SOLARI AUTHENTIC)
+   ========================================== */
+
+.flap-unit {
+  position: relative;
+  background: linear-gradient(180deg, #16181f 0%, #111317 48%, #0d0f12 52%, #14171d 100%);
+  border: 1px solid #252a34;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Consolas', 'Courier New', 'Roboto Mono', monospace;
+  font-weight: 900;
+  text-transform: uppercase;
+  color: var(--flap-text-default);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  perspective: 300px;
+  flex-shrink: 0;
+  width: 20px;
+  height: 85%;
+}
+
+/* Línia de tall horitzontal molt neta al 50% */
+.flap-unit::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background-color: #050608;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.12);
+  z-index: 10;
+  transform: translateY(-50%);
+}
+
+/* Ombreig molt suau per donar relleu 3D sense tapar les lletres */
+.flap-unit::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.05) 0%, transparent 45%, rgba(0,0,0,0.3) 55%, transparent 100%);
+  pointer-events: none;
+  z-index: 5;
+}
+
+.flap-char {
+  display: inline-block;
+  line-height: 1;
+  text-align: center;
+  transform: translateY(-0.5px);
+  z-index: 2;
+}
+
+/* Variacions de color d'alta intensitat */
+.flap-unit.color-yellow {
+  color: var(--flap-text-yellow) !important;
+  text-shadow: 0 0 6px rgba(255, 200, 0, 0.5);
+}
+
+.flap-unit.color-green {
+  color: var(--flap-text-green) !important;
+  text-shadow: 0 0 6px rgba(46, 204, 113, 0.5);
+}
+
+.flap-unit.color-red {
+  color: var(--flap-text-red) !important;
+}
+
+.flap-unit.color-dim {
+  color: var(--flap-text-dim) !important;
+}
+
+/* Animació de gir de la pestanya */
+.flap-unit.flipping {
+  animation: flapFlip 0.08s ease-in-out infinite alternate;
+}
+
+@keyframes flapFlip {
+  0% { transform: rotateX(0deg); }
+  100% { transform: rotateX(-35deg); }
+}
+
+/* ==========================================
+   PILOT LLUMINÓS LED D'ESTAT (GRAND CENTRAL STYLE)
+   ========================================== */
+
+.led-indicator {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--led-off);
+  border: 2px solid #14171d;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.9);
+  transition: all 0.25s ease;
+}
+
+.led-indicator.green {
+  background: radial-gradient(circle at 35% 35%, #55efc4 0%, #00b894 100%);
+  box-shadow: 0 0 12px var(--led-green), inset 0 1px 2px rgba(255,255,255,0.9);
+}
+
+.led-indicator.yellow {
+  background: radial-gradient(circle at 35% 35%, #ffeaa7 0%, #fdcb6e 100%);
+  box-shadow: 0 0 12px var(--led-yellow), inset 0 1px 2px rgba(255,255,255,0.9);
+}
+
+.led-indicator.blink {
+  animation: ledBlink 0.85s infinite alternate;
+}
+
+@keyframes ledBlink {
+  0% { opacity: 0.25; filter: brightness(0.6); }
+  100% { opacity: 1; filter: brightness(1.2); box-shadow: 0 0 16px var(--led-yellow); }
+}
+
+.led-indicator.red {
+  background: radial-gradient(circle at 35% 35%, #ff7675 0%, #d63031 100%);
+  box-shadow: 0 0 10px var(--led-red);
+}
+
+/* ==========================================
+   MODAL DE CONFIGURACIÓ
+   ========================================== */
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(4, 5, 8, 0.88);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.modal-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal-card {
+  width: 90%;
+  max-width: 540px;
+  background: #161920;
+  border: 1px solid #2a313f;
+  border-radius: 8px;
+  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255,255,255,0.06);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: modalSlideUp 0.3s ease-out;
+}
+
+@keyframes modalSlideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  background: #1c212b;
+  border-bottom: 1px solid #2a313f;
+}
+
+.modal-header h2 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.btn-close {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 1.6rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 6px;
+  transition: color 0.2s;
+}
+
+.btn-close:hover {
+  color: #ffffff;
+}
+
+.modal-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.config-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.config-group.toggle-group {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.config-group label {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #cbd5e1;
+}
+
+.form-control {
+  background: #0f1217;
+  border: 1px solid #333c4d;
+  color: #e2e8f0;
+  padding: 9px 12px;
+  border-radius: 5px;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.form-control:focus {
+  border-color: #3b82f6;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border-radius: 5px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background: #2563eb;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #1d4ed8;
+}
+
+.btn-secondary {
+  background: #334155;
+  color: #e2e8f0;
+}
+
+.btn-secondary:hover {
+  background: #475569;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+}
+
+.btn-link {
+  background: transparent;
+  color: #94a3b8;
+  text-decoration: underline;
+  cursor: pointer;
+  border: none;
+}
+
+.btn-link:hover {
+  color: #e2e8f0;
+}
+
+.btn-group-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 6px;
+}
+
+.config-hint {
+  font-size: 0.75rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+/* Switch */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #334155;
+  transition: .3s;
+  border-radius: 24px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .3s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: #2563eb;
+}
+
+input:checked + .slider:before {
+  transform: translateX(20px);
+}
+
+.modal-footer {
+  padding: 12px 20px;
+  background: #181d26;
+  border-top: 1px solid #2a313f;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ==========================================
+   LLISTA DE CALENDARIS SINCRONITZABLES
+   ========================================== */
+
+.calendars-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 180px;
+  overflow-y: auto;
+  margin-bottom: 6px;
+}
+
+.calendar-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #0d1015;
+  border: 1px solid #222936;
+  border-radius: 5px;
+  padding: 8px 12px;
+  gap: 10px;
+  transition: border-color 0.2s;
+}
+
+.calendar-item:hover {
+  border-color: #333d4f;
+}
+
+.cal-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  overflow: hidden;
+}
+
+.cal-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #2563eb;
+  flex-shrink: 0;
+}
+
+.cal-info {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  gap: 2px;
+}
+
+.cal-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #e2e8f0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cal-url-hint {
+  font-size: 0.72rem;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.btn-del-cal {
+  background: transparent;
+  border: none;
+  color: #ef4444;
+  opacity: 0.65;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s, background 0.2s;
+  flex-shrink: 0;
+}
+
+.btn-del-cal:hover {
+  opacity: 1;
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.add-calendar-box {
+  background: #090c10;
+  border: 1px dashed #262f3d;
+  border-radius: 6px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.add-cal-row {
+  display: flex;
+  gap: 8px;
+}
