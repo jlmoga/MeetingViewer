@@ -4,6 +4,21 @@ Aplicació web lleugera a pantalla completa que reprodueix l'estètica dels pane
 
 ---
 
+## ✨ Característiques principals (Key Features)
+
+* 🕒 **Estètica retro autèntica (Split-Flap Solari):** Fitxes mecàniques amb línia de divisió central (*split flap*), animació en cascada de gir de caràcters i llums indicadors LED segons l'estat de la reunió (en curs parpellejant, propera o programada).
+* 🔊 **Motor de so mecànic d'alta fidelitat:** Simulació acústica procedural de làmines de policarbonat (Web Audio API) amb cadència de repic continu (*flutter*) inspirada en l'estil de l'aeroport de Hakodate, compressor dinàmic anti-saturació i suport natiu per a fitxers d'àudio externs (`.mp3` / `.wav`).
+* 📅 **Sincronització multi-calendari universal:** Gestió simultània de múltiples calendaris mitjançant adreces iCal / `.ics` (Google Calendar, Outlook, Hotmail, Apple Calendar, Nextcloud, etc.).
+* 🎛️ **Filtre ràpid a la capçalera:** Botons interactius per aïllar una agenda específica o veure totes les convocatòries consolidades.
+* 🏷️ **Títol del panell editable:** Possibilitat de personalitzar el nom del panell (cantonada superior esquerra) des del menú de configuració amb memòria persistent.
+* 🌍 **Suport multiidioma:** Traducció completa en temps real a **Català**, **Castellà** i **Anglès**.
+* 📺 **Disseny 100% responsiu i sense scroll:** S'ajusta automàticament a qualsevol resolució de pantalla (monitors, televisors o tauletes), recalculant en temps real el nombre òptim de files i caràcters visibles.
+* 🎮 **Mode Demostració (Demo):** Convocatòries simulades per provar la visualització i les animacions sense necessitat de configurar dades reals.
+* ⚡ **Sense dependències feixugues:** Desenvolupat en Vanilla JavaScript, CSS3 i HTML5 amb un servidor local mínim en Node.js que resol les restriccions de CORS.
+* 📱 **Arquitectura aïllada per a APK:** Codi de la interfície centralitzat a la carpeta `www/`, llest per empaquetar en aplicacions mòbils Android mitjançant Capacitor, Cordova o un WebView natiu.
+
+---
+
 ## 🚀 Com iniciar l'aplicació
 
 Fes doble clic al fitxer:
@@ -22,29 +37,6 @@ Això engegarà el servidor local i obrirà automàticament el teu navegador pre
   * `style.css`: Estils visuals split-flap, LEDs i animacions mecàniques.
   * `app.js`: Lògica del panell, sintetitzador d'àudio, sincronització de calendaris i i18n.
   * `img/`: Imatges i icones del projecte.
+  * `snd/`: Fitxers i mostres d'àudio mecànic.
 * **`server.js`**: Servidor Node.js local que serveix la carpeta `www/` i fa de passarel·la/proxy per descarregar els calendaris iCal (`.ics`) sense problemes de CORS.
 * **`run.bat`**: Script per arrencar el servidor i obrir l'aplicació en Mode App directament.
-
-
-1. **Pantalla completa i sense scroll:**
-   * Ocupa el 100% de la pantalla disponible (`100vw` x `100vh`).
-   * Calcula automàticament el nombre òptim de files segons la mida del monitor o tauleta.
-2. **Estètica mecànica autèntica:**
-   * Fitxes dividides al mig amb línia de solapa (*split flap*).
-   * Animació de gir ràpid de lletres en canviar de text o estat.
-   * Efecte de so mecànic (*clack-clack*) sintetitzat en temps real (Web Audio API, sense descàrregues).
-   * Llums indicadors LED a la dreta de cada fila (en curs parpellejant en groc, pròximament en groc, programada en verd).
-3. **Estats del panell:**
-   * **Sense calendaris configurats:** Mostra un avís mecànic demanant obrir la configuració per afegir enllaços iCal.
-   * **Sense convocatòries pendents:** Mostra el missatge: `FELICITATS. AVUI NO TENS FEINA`.
-   * **Amb convocatòries:** Mostra les pròximes reunions ordenades cronològicament.
-4. **Configuració discreta:**
-   * Icona d'engranatge atenuada a la cantonada superior dreta (no distreu la vista del panell).
-   * Gestor de múltiples calendaris simultanis (activa/desactiva caselles i botons de filtre ràpid).
-   * Títol personalitzat editable a la cantonada superior esquerra.
-   * Selector de 3 idiomes: **Català**, **Castellà** i **Anglès**.
-   * Interruptor per activar/desactivar el so mecànic.
-   * **Mode Demostració (Demo):** Permet provar el panell a l'instant amb reunions simulades.
-5. **Preparat per a convertir en APK d'Android:**
-   * Desenvolupat en HTML5, CSS3 i JavaScript pur (Vanilla JS), sense dependències feixugues.
-   * Preparat per integrar-se en un `WebView` d'Android o empaquetar-se amb Capacitor.
