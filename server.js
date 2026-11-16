@@ -62,6 +62,41 @@ function fetchUrlWithRedirects(targetUrl, maxRedirects, callback) {
 }
 
 const server = http.createServer((req, res) => {
+  // Endpoint per desar fitxers locals seleccionats amb el cercador a la carpeta /secrets/
+  if (req.url.startsWith('/api/upload-calendar') && req.method === 'POST') {
+    try {
+      const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
+      let fileName = parsedUrl.searchParams.get('name') || 'calendar.json';
+      fileName = path.basename(fileName); // seguretat: evita path traversal
+
+      const secretsDir = path.join(__dirname, 'secrets');
+      if (!fs.existsSync(secretsDir)) {
+        fs.mkdirSync(secretsDir, { recursive: true });
+      }
+
+      const destPath = path.join(secretsDir, fileName);
+      const writeStream = fs.createWriteStream(destPath);
+
+      req.pipe(writeStream);
+      writeStream.on('finish', () => {
+        res.writeHead(200, {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Access-Control-Allow-Origin': '*'
+        });
+        res.end(JSON.stringify({ success: true, relativePath: 'secrets/' + fileName }));
+      });
+      writeStream.on('error', (err) => {
+        res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
+        res.end('Error desant fitxer: ' + err.message);
+      });
+      return;
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end('Error intern de pujada: ' + e.message);
+      return;
+    }
+  }
+
   // Endpoint unificat per a calendaris (iCal / .ics / JSON / fitxers locals com secrets/...)
   if (req.url.startsWith('/api/calendar') || req.url.startsWith('/api/ics')) {
     try {

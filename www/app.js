@@ -34,6 +34,7 @@ const I18N = {
     lblDemoMode: "Mode de demostració (convocatòries simulades):",
     lblCalendarsTitle: "Calendaris Sincronitzats:",
     calPlaceholder: "Adreça iCal (.ics) o fitxer JSON (ex: secrets/calendar-jlmonte.json)",
+    btnBrowseTitle: "Cercar fitxer local (.json, .ics)",
     calendarsHelpText: "Afegeix els teus calendaris mitjançant l'adreça secreta iCal (.ics) o fitxers JSON de Power Automate (ex: secrets/calendar-jlmonte.json). Activa o desactiva la casella per triar quins es mostren al panell.",
     btnDeleteCalConfirm: "Segur que vols eliminar aquest calendari?",
     lblRefreshInterval: "Freqüència de refresc automàtic:",
@@ -72,6 +73,7 @@ const I18N = {
     lblDemoMode: "Modo de demostración (convocatorias simuladas):",
     lblCalendarsTitle: "Calendarios Sincronizados:",
     calPlaceholder: "Dirección iCal (.ics) o archivo JSON (ej: secrets/calendar-jlmonte.json)",
+    btnBrowseTitle: "Buscar archivo local (.json, .ics)",
     calendarsHelpText: "Añade tus calendarios mediante la Dirección secreta en formato iCal (.ics) o archivos JSON de Power Automate (ej: secrets/calendar-jlmonte.json). Activa o desactiva la casilla para elegir cuáles se muestran en el panel.",
     btnDeleteCalConfirm: "¿Seguro que deseas eliminar este calendario?",
     lblRefreshInterval: "Frecuencia de refresco automático:",
@@ -110,6 +112,7 @@ const I18N = {
     lblDemoMode: "Demo mode (simulated meetings):",
     lblCalendarsTitle: "Synced Calendars:",
     calPlaceholder: "iCal (.ics) address or JSON file (e.g. secrets/calendar-jlmonte.json)",
+    btnBrowseTitle: "Browse local file (.json, .ics)",
     calendarsHelpText: "Add your calendars using the Secret address in iCal format (.ics) or Power Automate JSON files (e.g. secrets/calendar-jlmonte.json). Toggle the checkbox to choose which ones appear on the board.",
     btnDeleteCalConfirm: "Are you sure you want to delete this calendar?",
     lblRefreshInterval: "Auto-refresh frequency:",
@@ -1538,6 +1541,76 @@ function setupEventHandlers() {
     });
   }
 
+  const btnBrowseFile = document.getElementById('btnBrowseFile');
+  const inputCalFilePicker = document.getElementById('inputCalFilePicker');
+
+  if (btnBrowseFile && inputCalFilePicker) {
+    btnBrowseFile.addEventListener('click', (e) => {
+      e.preventDefault();
+      inputCalFilePicker.value = '';
+      inputCalFilePicker.click();
+    });
+
+    inputCalFilePicker.addEventListener('change', async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+
+      console.log(`[FilePicker] Fitxer seleccionat: ${file.name} (${file.size} bytes)`);
+
+      // 1. Assignar la ruta a l'input URL (per defecte apunten a la carpeta secrets/)
+      inputNewCalUrl.value = 'secrets/' + file.name;
+      inputNewCalUrl.focus();
+
+      // 2. Llegir el fitxer local per auto-completar el nom si està buit
+      const reader = new FileReader();
+      reader.onload = async (evt) => {
+        const text = evt.target.result;
+        try {
+          // Si és JSON
+          if (file.name.toLowerCase().endsWith('.json') || text.trim().startsWith('{') || text.trim().startsWith('[')) {
+            const clean = text.replace(/^\uFEFF/, '').trim();
+            const parsed = JSON.parse(clean);
+            if (!inputNewCalName.value.trim()) {
+              if (parsed.name) {
+                inputNewCalName.value = parsed.name;
+              } else if (parsed.account) {
+                inputNewCalName.value = parsed.account;
+              } else {
+                inputNewCalName.value = file.name.replace(/\.[^.]+$/, '');
+              }
+            }
+          } else {
+            // Si és iCal (.ics)
+            if (!inputNewCalName.value.trim()) {
+              const matchCalName = text.match(/X-WR-CALNAME:(.*)/i);
+              if (matchCalName && matchCalName[1]) {
+                inputNewCalName.value = matchCalName[1].trim();
+              } else {
+                inputNewCalName.value = file.name.replace(/\.[^.]+$/, '');
+              }
+            }
+          }
+        } catch (err) {
+          if (!inputNewCalName.value.trim()) {
+            inputNewCalName.value = file.name.replace(/\.[^.]+$/, '');
+          }
+        }
+
+        // 3. Si és un fitxer triat des d'una altra carpeta, en desem una còpia a /secrets/ via el servidor
+        try {
+          await fetch('/api/upload-calendar?name=' + encodeURIComponent(file.name), {
+            method: 'POST',
+            body: file
+          });
+          console.log(`[FilePicker] Fitxer sincronitzat a secrets/${file.name}`);
+        } catch (uploadErr) {
+          console.warn('[FilePicker] Nota de sincronització:', uploadErr);
+        }
+      };
+      reader.readAsText(file);
+    });
+  }
+
   selectLang.value = state.lang;
   toggleDemo.checked = state.demoMode;
   toggleSound.checked = state.soundEnabled;
@@ -1744,6 +1817,8 @@ function applyI18nLabels() {
   if (helpCals) helpCals.textContent = t.calendarsHelpText;
   const inputNewCalUrl = document.getElementById('inputNewCalUrl');
   if (inputNewCalUrl && t.calPlaceholder) inputNewCalUrl.placeholder = t.calPlaceholder;
+  const btnBrowseFile = document.getElementById('btnBrowseFile');
+  if (btnBrowseFile && t.btnBrowseTitle) btnBrowseFile.title = t.btnBrowseTitle;
 
   document.getElementById('lblDemoMode').textContent = t.lblDemoMode;
   

@@ -873,4 +873,25 @@ input:checked + .slider:before {
 .add-cal-row {
   display: flex;
   gap: 8px;
+  align-items: center;
+}
+
+#btnBrowseFile {
+  background: #1e2634;
+  border: 1px solid #333f52;
+  color: #94a3b8;
+  padding: 8px 12px;
+  border-radius: 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+#btnBrowseFile:hover {
+  background: #2a3547;
+  color: #e2e8f0;
+  border-color: #3b82f6;
 }
