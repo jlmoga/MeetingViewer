@@ -1,6 +1,6 @@
-# Meeting Viewer - Panell Mecànic Split-Flap per a Calendaris (iCal / .ics)
+# Meeting Viewer - Panell Mecànic Split-Flap per a Calendaris (iCal / JSON / Power Automate)
 
-Aplicació web lleugera a pantalla completa que reprodueix l'estètica dels panells mecànics d'estacions de tren i aeroports antics (estil Solari di Udine), mostrant les pròximes convocatòries dels teus calendaris (Google Calendar, Outlook, Hotmail, Apple Calendar, etc.) mitjançant enllaços iCal / .ics, amb caràcters mòbils i so mecànic autèntic.
+Aplicació web lleugera a pantalla completa que reprodueix l'estètica dels panells mecànics d'estacions de tren i aeroports antics (estil Solari di Udine), mostrant les pròximes convocatòries dels teus calendaris (Google Calendar, Outlook, Hotmail, Apple Calendar, fitxers JSON de Power Automate, etc.) mitjançant enllaços iCal / .ics o fitxers JSON locals/remots, amb caràcters mòbils i so mecànic autèntic.
 
 ---
 
@@ -8,7 +8,7 @@ Aplicació web lleugera a pantalla completa que reprodueix l'estètica dels pane
 
 * 🕒 **Estètica retro autèntica (Split-Flap Solari):** Fitxes mecàniques amb línia de divisió central (*split flap*), animació en cascada de gir de caràcters i llums indicadors LED segons l'estat de la reunió (en curs parpellejant, propera o programada).
 * 🔊 **Motor de so mecànic d'alta fidelitat:** Simulació acústica procedural de làmines de policarbonat (Web Audio API) amb cadència de repic continu (*flutter*) inspirada en l'estil de l'aeroport de Hakodate, compressor dinàmic anti-saturació i suport natiu per a fitxers d'àudio externs (`.mp3` / `.wav`).
-* 📅 **Sincronització multi-calendari universal:** Gestió simultània de múltiples calendaris mitjançant adreces iCal / `.ics` (Google Calendar, Outlook, Hotmail, Apple Calendar, Nextcloud, etc.).
+* 📅 **Sincronització multi-calendari universal (iCal i JSON):** Gestió simultània de múltiples calendaris mitjançant adreces iCal / `.ics` (Google Calendar, Outlook, Hotmail, Apple Calendar) i fitxers JSON corporatius (exportats periòdicament per Power Automate o Microsoft Graph a la carpeta `/secrets/`).
 * 🎛️ **Filtre ràpid a la capçalera:** Botons interactius per aïllar una agenda específica o veure totes les convocatòries consolidades.
 * 🏷️ **Títol del panell editable:** Possibilitat de personalitzar el nom del panell (cantonada superior esquerra) des del menú de configuració amb memòria persistent.
 * 🌍 **Suport multiidioma:** Traducció completa en temps real a **Català**, **Castellà** i **Anglès**.

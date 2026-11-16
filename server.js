@@ -62,45 +62,119 @@ function fetchUrlWithRedirects(targetUrl, maxRedirects, callback) {
 }
 
 const server = http.createServer((req, res) => {
-  // Proxy per a enllaços iCal / .ics de Google Calendar (evita bloquejos de CORS)
-  if (req.url.startsWith('/api/ics')) {
+  // Endpoint unificat per a calendaris (iCal / .ics / JSON / fitxers locals com secrets/...)
+  if (req.url.startsWith('/api/calendar') || req.url.startsWith('/api/ics')) {
     try {
       const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
-      const icsTargetUrl = parsedUrl.searchParams.get('url');
-      if (!icsTargetUrl) {
+      let target = parsedUrl.searchParams.get('url') || parsedUrl.searchParams.get('path') || parsedUrl.searchParams.get('file');
+      if (!target) {
         res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' });
         res.end('Falta el paràmetre url');
         return;
       }
 
-      console.log(`[iCal Proxy] Descarregant: ${icsTargetUrl.slice(0, 80)}...`);
+      target = target.trim();
 
-      fetchUrlWithRedirects(icsTargetUrl, 5, (err, icsRes) => {
+      // Cas 1: Ruta local a fitxer (ex: secrets/calendar-jlmonte.json, Z:\..., /secrets/...)
+      const isRemoteUrl = /^https?:\/\//i.test(target) || /^webcal:\/\//i.test(target);
+      if (!isRemoteUrl) {
+        let localPath = target;
+        if (localPath.startsWith('file:///')) {
+          localPath = decodeURI(localPath.replace(/^file:\/\/\//, ''));
+        }
+        if (!path.isAbsolute(localPath)) {
+          localPath = path.resolve(__dirname, localPath.replace(/^[/\\]+/, ''));
+        }
+
+        console.log(`[Calendar API] Llegint fitxer local: ${localPath}`);
+
+        fs.readFile(localPath, 'utf8', (err, content) => {
+          if (err) {
+            console.error('[Calendar API] Error llegint fitxer local:', err.message);
+            res.writeHead(404, {
+              'Content-Type': 'text/plain; charset=utf-8',
+              'Access-Control-Allow-Origin': '*'
+            });
+            res.end('Fitxer local no trobat: ' + err.message);
+            return;
+          }
+
+          // Eliminar BOM de Windows si existeix
+          const clean = content.replace(/^\uFEFF/, '').trim();
+          const isJson = localPath.toLowerCase().endsWith('.json') || clean.startsWith('[') || clean.startsWith('{');
+          const contentType = isJson ? 'application/json; charset=utf-8' : 'text/calendar; charset=utf-8';
+
+          res.writeHead(200, {
+            'Content-Type': contentType,
+            'Access-Control-Allow-Origin': '*',
+            'Cache-Control': 'no-store, no-cache, must-revalidate'
+          });
+          res.end(clean);
+        });
+        return;
+      }
+
+      // Cas 2: URL remota (Google Calendar, Outlook ICS, etc.)
+      if (target.startsWith('webcal://')) {
+        target = 'https://' + target.slice('webcal://'.length);
+      }
+
+      console.log(`[Calendar Proxy] Descarregant: ${target.slice(0, 80)}...`);
+
+      fetchUrlWithRedirects(target, 5, (err, remoteRes) => {
         if (err) {
-          console.error('[iCal Proxy] Error descarregant:', err.message);
+          console.error('[Calendar Proxy] Error descarregant:', err.message);
           res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
-          res.end('Error descarregant iCal: ' + err.message);
+          res.end('Error descarregant calendari: ' + err.message);
           return;
         }
 
-        console.log(`[iCal Proxy] Resposta Google: HTTP ${icsRes.statusCode}`);
+        const isJson = target.toLowerCase().endsWith('.json');
+        const defaultType = isJson ? 'application/json; charset=utf-8' : 'text/calendar; charset=utf-8';
 
-        res.writeHead(icsRes.statusCode, {
-          'Content-Type': 'text/calendar; charset=utf-8',
+        res.writeHead(remoteRes.statusCode, {
+          'Content-Type': remoteRes.headers['content-type'] || defaultType,
           'Access-Control-Allow-Origin': '*',
           'Cache-Control': 'no-store, no-cache, must-revalidate'
         });
-        icsRes.pipe(res);
+        remoteRes.pipe(res);
       });
       return;
     } catch (e) {
       res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
-      res.end('Error intern del proxy iCal: ' + e.message);
+      res.end('Error intern de la API de calendaris: ' + e.message);
       return;
     }
   }
 
   let reqPath = decodeURI(req.url.split('?')[0]);
+
+  // Suport per accedir directament a fitxers de /secrets/ via HTTP local
+  if (reqPath.startsWith('/secrets/')) {
+    const relativeSecret = reqPath.slice('/secrets/'.length);
+    const secretPath = path.join(__dirname, 'secrets', relativeSecret);
+    const SECRETS_DIR = path.join(__dirname, 'secrets');
+    if (!secretPath.startsWith(SECRETS_DIR)) {
+      res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end('403 Prohibit');
+      return;
+    }
+    fs.stat(secretPath, (err, stats) => {
+      if (err || !stats.isFile()) {
+        res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+        res.end('404 No trobat a secrets: ' + reqPath);
+        return;
+      }
+      res.writeHead(200, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'no-cache, no-store'
+      });
+      fs.createReadStream(secretPath).pipe(res);
+    });
+    return;
+  }
+
   if (reqPath === '/' || reqPath === '') {
     reqPath = '/index.html';
   }

@@ -33,7 +33,8 @@ const I18N = {
     lblLanguage: "Idioma del Panell:",
     lblDemoMode: "Mode de demostració (convocatòries simulades):",
     lblCalendarsTitle: "Calendaris Sincronitzats:",
-    calendarsHelpText: "Afegeix els teus calendaris mitjançant l'Adreça secreta en format iCal (.ics). Activa o desactiva la casella per triar quins es mostren al panell.",
+    calPlaceholder: "Adreça iCal (.ics) o fitxer JSON (ex: secrets/calendar-jlmonte.json)",
+    calendarsHelpText: "Afegeix els teus calendaris mitjançant l'adreça secreta iCal (.ics) o fitxers JSON de Power Automate (ex: secrets/calendar-jlmonte.json). Activa o desactiva la casella per triar quins es mostren al panell.",
     btnDeleteCalConfirm: "Segur que vols eliminar aquest calendari?",
     lblRefreshInterval: "Freqüència de refresc automàtic:",
     optRefresh30: "Cada 30 segons",
@@ -70,7 +71,8 @@ const I18N = {
     lblLanguage: "Idioma del Panel:",
     lblDemoMode: "Modo de demostración (convocatorias simuladas):",
     lblCalendarsTitle: "Calendarios Sincronizados:",
-    calendarsHelpText: "Añade tus calendarios mediante la Dirección secreta en formato iCal (.ics). Activa o desactiva la casilla para elegir cuáles se muestran en el panel.",
+    calPlaceholder: "Dirección iCal (.ics) o archivo JSON (ej: secrets/calendar-jlmonte.json)",
+    calendarsHelpText: "Añade tus calendarios mediante la Dirección secreta en formato iCal (.ics) o archivos JSON de Power Automate (ej: secrets/calendar-jlmonte.json). Activa o desactiva la casilla para elegir cuáles se muestran en el panel.",
     btnDeleteCalConfirm: "¿Seguro que deseas eliminar este calendario?",
     lblRefreshInterval: "Frecuencia de refresco automático:",
     optRefresh30: "Cada 30 segundos",
@@ -107,7 +109,8 @@ const I18N = {
     lblLanguage: "Board Language:",
     lblDemoMode: "Demo mode (simulated meetings):",
     lblCalendarsTitle: "Synced Calendars:",
-    calendarsHelpText: "Add your calendars using the Secret address in iCal format (.ics). Toggle the checkbox to choose which ones appear on the board.",
+    calPlaceholder: "iCal (.ics) address or JSON file (e.g. secrets/calendar-jlmonte.json)",
+    calendarsHelpText: "Add your calendars using the Secret address in iCal format (.ics) or Power Automate JSON files (e.g. secrets/calendar-jlmonte.json). Toggle the checkbox to choose which ones appear on the board.",
     btnDeleteCalConfirm: "Are you sure you want to delete this calendar?",
     lblRefreshInterval: "Auto-refresh frequency:",
     optRefresh30: "Every 30 seconds",
@@ -1223,32 +1226,117 @@ function parseICS(icsText) {
 }
 
 // =========================================================================
-// GESTIÓ MULTI-CALENDARI ICAL (.ICS)
+// GESTIÓ MULTI-CALENDARI (ICAL / .ICS I POWER AUTOMATE JSON)
 // =========================================================================
 
 function saveCalendars() {
   localStorage.setItem("mv_calendars", JSON.stringify(state.calendars));
 }
 
-async function fetchSingleIcal(url, calName) {
+/**
+ * Processador d'esdeveniments per a estructures JSON (Power Automate, Microsoft Graph, etc.)
+ */
+function parseJSONEvents(jsonText, calName) {
+  let items = [];
   try {
-    const endpoint = '/api/ics?url=' + encodeURIComponent(url) + '&_t=' + Date.now();
+    const clean = (typeof jsonText === 'string' ? jsonText : '').replace(/^\uFEFF/, '').trim();
+    const parsed = typeof jsonText === 'object' ? jsonText : JSON.parse(clean);
+    if (Array.isArray(parsed)) {
+      items = parsed;
+    } else if (parsed && Array.isArray(parsed.value)) {
+      items = parsed.value;
+    } else if (parsed && Array.isArray(parsed.events)) {
+      items = parsed.events;
+    }
+  } catch (e) {
+    console.error(`[JSON Calendar] Error parsejant dades de ${calName}:`, e);
+    return [];
+  }
+
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+
+  const events = [];
+  items.forEach(item => {
+    if (!item) return;
+    const title = (item.subject || item.title || item.summary || "(Sense títol)").trim();
+    let location = (item.location || item.loc || "").trim();
+    if (!location && (item.isOnlineMeeting || item.onlineMeetingUrl)) {
+      location = "TEAMS";
+    }
+    if (!location) location = "---";
+
+    let start = item.start;
+    if (start && typeof start === 'object' && start.dateTime) start = start.dateTime;
+    let end = item.end;
+    if (end && typeof end === 'object' && end.dateTime) end = end.dateTime;
+
+    if (!start) return;
+    if (!end) end = start;
+
+    let isAllDay = !!(item.allDay || item.isAllDay);
+    const sDate = new Date(start);
+    const eDate = new Date(end);
+    if (sDate.getHours() === 0 && sDate.getMinutes() === 0) {
+      const durH = (eDate - sDate) / 3600000;
+      if (durH >= 20 || durH === 0) {
+        isAllDay = true;
+      }
+    }
+
+    const eventTime = eDate.getTime() || sDate.getTime();
+    if (!isNaN(eventTime) && eventTime >= startOfToday) {
+      events.push({
+        title,
+        location,
+        start,
+        end,
+        isAllDay,
+        calendarName: calName
+      });
+    }
+  });
+
+  return events;
+}
+
+async function fetchSingleCalendar(cal) {
+  const url = (cal.url || '').trim();
+  const calName = cal.name || 'Calendari';
+  if (!url) return [];
+
+  try {
+    const endpoint = '/api/calendar?url=' + encodeURIComponent(url) + '&_t=' + Date.now();
     const res = await fetch(endpoint, { cache: 'no-store' });
     if (!res.ok) {
-      console.warn(`[iCal] Error descarregant ${calName}: HTTP ${res.status}`);
+      console.warn(`[Calendar API] Error descarregant ${calName} (${url}): HTTP ${res.status}`);
       return [];
     }
-    const text = await res.text();
-    const evs = parseICS(text);
-    return evs.map(e => ({
-      ...e,
-      calendarName: calName
-    }));
+    const rawText = await res.text();
+    const clean = rawText.replace(/^\uFEFF/, '').trim();
+
+    // Auto-detecció de format: JSON o iCal
+    const isJson = (cal.type === 'json') || url.toLowerCase().includes('.json') || clean.startsWith('[') || clean.startsWith('{');
+
+    if (isJson) {
+      const evs = parseJSONEvents(clean, calName);
+      console.log(`[JSON Calendar] Carregades ${evs.length} convocatòries de '${calName}'`);
+      return evs;
+    } else {
+      const evs = parseICS(clean);
+      return evs.map(e => ({
+        ...e,
+        calendarName: calName
+      }));
+    }
   } catch (err) {
-    console.error(`[iCal] Error a ${calName}:`, err);
+    console.error(`[Calendar API] Error a ${calName}:`, err);
     return [];
   }
 }
+
+// Àlies per compatibilitat
+const fetchSingleIcal = (url, name) => fetchSingleCalendar({ url, name });
 
 async function fetchMultiCalendarEvents() {
   const activeCals = (state.calendars || []).filter(c => c.enabled && c.url);
@@ -1259,7 +1347,7 @@ async function fetchMultiCalendarEvents() {
   }
 
   try {
-    const promises = activeCals.map(c => fetchSingleIcal(c.url, c.name));
+    const promises = activeCals.map(c => fetchSingleCalendar(c));
     const results = await Promise.all(promises);
 
     let all = [];
@@ -1326,6 +1414,12 @@ function renderCalendarsList() {
     const nameEl = document.createElement('span');
     nameEl.className = 'cal-name';
     nameEl.textContent = cal.name || 'Calendari';
+
+    const isJson = (cal.type === 'json') || (cal.url && cal.url.toLowerCase().includes('.json'));
+    const badge = document.createElement('span');
+    badge.className = isJson ? 'cal-badge json' : 'cal-badge ical';
+    badge.textContent = isJson ? 'JSON' : 'iCal';
+    nameEl.appendChild(badge);
 
     const urlEl = document.createElement('span');
     urlEl.className = 'cal-url-hint';
@@ -1400,10 +1494,12 @@ function setupEventHandlers() {
         name = (state.lang === 'ca' ? "Calendari " : "Calendario ") + (state.calendars.length + 1);
       }
 
+      const isJson = url.toLowerCase().includes('.json');
       const newCal = {
         id: Date.now().toString(),
         name: name,
         url: url,
+        type: isJson ? 'json' : 'ical',
         enabled: true
       };
 
@@ -1626,6 +1722,8 @@ function applyI18nLabels() {
   if (lblCals) lblCals.textContent = t.lblCalendarsTitle;
   const helpCals = document.getElementById('calendarsHelpText');
   if (helpCals) helpCals.textContent = t.calendarsHelpText;
+  const inputNewCalUrl = document.getElementById('inputNewCalUrl');
+  if (inputNewCalUrl && t.calPlaceholder) inputNewCalUrl.placeholder = t.calPlaceholder;
 
   document.getElementById('lblDemoMode').textContent = t.lblDemoMode;
   
