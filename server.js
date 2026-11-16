@@ -62,42 +62,7 @@ function fetchUrlWithRedirects(targetUrl, maxRedirects, callback) {
 }
 
 const server = http.createServer((req, res) => {
-  // Endpoint per desar fitxers locals seleccionats amb el cercador a la carpeta /secrets/
-  if (req.url.startsWith('/api/upload-calendar') && req.method === 'POST') {
-    try {
-      const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
-      let fileName = parsedUrl.searchParams.get('name') || 'calendar.json';
-      fileName = path.basename(fileName); // seguretat: evita path traversal
-
-      const secretsDir = path.join(__dirname, 'secrets');
-      if (!fs.existsSync(secretsDir)) {
-        fs.mkdirSync(secretsDir, { recursive: true });
-      }
-
-      const destPath = path.join(secretsDir, fileName);
-      const writeStream = fs.createWriteStream(destPath);
-
-      req.pipe(writeStream);
-      writeStream.on('finish', () => {
-        res.writeHead(200, {
-          'Content-Type': 'application/json; charset=utf-8',
-          'Access-Control-Allow-Origin': '*'
-        });
-        res.end(JSON.stringify({ success: true, relativePath: 'secrets/' + fileName }));
-      });
-      writeStream.on('error', (err) => {
-        res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
-        res.end('Error desant fitxer: ' + err.message);
-      });
-      return;
-    } catch (e) {
-      res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
-      res.end('Error intern de pujada: ' + e.message);
-      return;
-    }
-  }
-
-  // Endpoint unificat per a calendaris (iCal / .ics / JSON / fitxers locals com secrets/...)
+  // Endpoint unificat per a calendaris (iCal / .ics / JSON via URL remota)
   if (req.url.startsWith('/api/calendar') || req.url.startsWith('/api/ics')) {
     try {
       const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
@@ -110,48 +75,19 @@ const server = http.createServer((req, res) => {
 
       target = target.trim();
 
-      // Cas 1: Ruta local a fitxer (ex: secrets/calendar-jlmonte.json, Z:\..., /secrets/...)
-      const isRemoteUrl = /^https?:\/\//i.test(target) || /^webcal:\/\//i.test(target);
-      if (!isRemoteUrl) {
-        let localPath = target;
-        if (localPath.startsWith('file:///')) {
-          localPath = decodeURI(localPath.replace(/^file:\/\/\//, ''));
-        }
-        if (!path.isAbsolute(localPath)) {
-          localPath = path.resolve(__dirname, localPath.replace(/^[/\\]+/, ''));
-        }
-
-        console.log(`[Calendar API] Llegint fitxer local: ${localPath}`);
-
-        fs.readFile(localPath, 'utf8', (err, content) => {
-          if (err) {
-            console.error('[Calendar API] Error llegint fitxer local:', err.message);
-            res.writeHead(404, {
-              'Content-Type': 'text/plain; charset=utf-8',
-              'Access-Control-Allow-Origin': '*'
-            });
-            res.end('Fitxer local no trobat: ' + err.message);
-            return;
-          }
-
-          // Eliminar BOM de Windows si existeix
-          const clean = content.replace(/^\uFEFF/, '').trim();
-          const isJson = localPath.toLowerCase().endsWith('.json') || clean.startsWith('[') || clean.startsWith('{');
-          const contentType = isJson ? 'application/json; charset=utf-8' : 'text/calendar; charset=utf-8';
-
-          res.writeHead(200, {
-            'Content-Type': contentType,
-            'Access-Control-Allow-Origin': '*',
-            'Cache-Control': 'no-store, no-cache, must-revalidate'
-          });
-          res.end(clean);
-        });
-        return;
-      }
-
-      // Cas 2: URL remota (Google Calendar, Outlook ICS, etc.)
+      // Convertir esquema webcal a https
       if (target.startsWith('webcal://')) {
         target = 'https://' + target.slice('webcal://'.length);
+      }
+
+      const isRemoteUrl = /^https?:\/\//i.test(target);
+      if (!isRemoteUrl) {
+        res.writeHead(400, {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'Access-Control-Allow-Origin': '*'
+        });
+        res.end('Només s\'admeten adreces URL remotes (http:// o https://)');
+        return;
       }
 
       console.log(`[Calendar Proxy] Descarregant: ${target.slice(0, 80)}...`);
@@ -183,32 +119,6 @@ const server = http.createServer((req, res) => {
   }
 
   let reqPath = decodeURI(req.url.split('?')[0]);
-
-  // Suport per accedir directament a fitxers de /secrets/ via HTTP local
-  if (reqPath.startsWith('/secrets/')) {
-    const relativeSecret = reqPath.slice('/secrets/'.length);
-    const secretPath = path.join(__dirname, 'secrets', relativeSecret);
-    const SECRETS_DIR = path.join(__dirname, 'secrets');
-    if (!secretPath.startsWith(SECRETS_DIR)) {
-      res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
-      res.end('403 Prohibit');
-      return;
-    }
-    fs.stat(secretPath, (err, stats) => {
-      if (err || !stats.isFile()) {
-        res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
-        res.end('404 No trobat a secrets: ' + reqPath);
-        return;
-      }
-      res.writeHead(200, {
-        'Content-Type': 'application/json; charset=utf-8',
-        'Access-Control-Allow-Origin': '*',
-        'Cache-Control': 'no-cache, no-store'
-      });
-      fs.createReadStream(secretPath).pipe(res);
-    });
-    return;
-  }
 
   if (reqPath === '/' || reqPath === '') {
     reqPath = '/index.html';

@@ -33,9 +33,8 @@ const I18N = {
     lblLanguage: "Idioma del Panell:",
     lblDemoMode: "Mode de demostració (convocatòries simulades):",
     lblCalendarsTitle: "Calendaris Sincronitzats:",
-    calPlaceholder: "Adreça iCal (.ics) o fitxer JSON (ex: secrets/calendar-jlmonte.json)",
-    btnBrowseTitle: "Cercar fitxer local (.json, .ics)",
-    calendarsHelpText: "Afegeix els teus calendaris mitjançant l'adreça secreta iCal (.ics) o fitxers JSON de Power Automate (ex: secrets/calendar-jlmonte.json). Activa o desactiva la casella per triar quins es mostren al panell.",
+    calPlaceholder: "URL del calendari (enllaç iCal .ics o endpoint JSON)",
+    calendarsHelpText: "Afegeix els teus calendaris mitjançant l'adreça web iCal (.ics) o la URL d'un endpoint JSON (Power Automate / API). Activa o desactiva la casella per triar quins es mostren al panell.",
     btnDeleteCalConfirm: "Segur que vols eliminar aquest calendari?",
     lblRefreshInterval: "Freqüència de refresc automàtic:",
     optRefresh30: "Cada 30 segons",
@@ -72,9 +71,8 @@ const I18N = {
     lblLanguage: "Idioma del Panel:",
     lblDemoMode: "Modo de demostración (convocatorias simuladas):",
     lblCalendarsTitle: "Calendarios Sincronizados:",
-    calPlaceholder: "Dirección iCal (.ics) o archivo JSON (ej: secrets/calendar-jlmonte.json)",
-    btnBrowseTitle: "Buscar archivo local (.json, .ics)",
-    calendarsHelpText: "Añade tus calendarios mediante la Dirección secreta en formato iCal (.ics) o archivos JSON de Power Automate (ej: secrets/calendar-jlmonte.json). Activa o desactiva la casilla para elegir cuáles se muestran en el panel.",
+    calPlaceholder: "URL del calendario (enlace iCal .ics o endpoint JSON)",
+    calendarsHelpText: "Añade tus calendarios mediante la URL en formato iCal (.ics) o un endpoint JSON (Power Automate / API). Activa o desactiva la casilla para elegir cuáles se muestran en el panel.",
     btnDeleteCalConfirm: "¿Seguro que deseas eliminar este calendario?",
     lblRefreshInterval: "Frecuencia de refresco automático:",
     optRefresh30: "Cada 30 segundos",
@@ -111,9 +109,8 @@ const I18N = {
     lblLanguage: "Board Language:",
     lblDemoMode: "Demo mode (simulated meetings):",
     lblCalendarsTitle: "Synced Calendars:",
-    calPlaceholder: "iCal (.ics) address or JSON file (e.g. secrets/calendar-jlmonte.json)",
-    btnBrowseTitle: "Browse local file (.json, .ics)",
-    calendarsHelpText: "Add your calendars using the Secret address in iCal format (.ics) or Power Automate JSON files (e.g. secrets/calendar-jlmonte.json). Toggle the checkbox to choose which ones appear on the board.",
+    calPlaceholder: "Calendar URL (iCal .ics link or JSON endpoint)",
+    calendarsHelpText: "Add your calendars using an iCal (.ics) URL or a JSON endpoint URL (Power Automate / API). Toggle the checkbox to choose which ones appear on the board.",
     btnDeleteCalConfirm: "Are you sure you want to delete this calendar?",
     lblRefreshInterval: "Auto-refresh frequency:",
     optRefresh30: "Every 30 seconds",
@@ -128,6 +125,38 @@ const I18N = {
 // Alfabet mecànic
 const FLAP_CHARS = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.:/-_#&@!?()Ç";
 
+/**
+ * Normalitza una URL de calendari:
+ * Converteix automàticament enllaços de visualització de SharePoint/OneDrive (onedrive.aspx o guestaccess.aspx) a descàrrega directa (download.aspx).
+ */
+function normalizeCalendarUrl(url) {
+  if (!url) return '';
+  let cleanUrl = url.trim();
+
+  if (cleanUrl.startsWith('webcal://')) {
+    cleanUrl = 'https://' + cleanUrl.slice('webcal://'.length);
+  }
+
+  // 1. SharePoint / OneDrive: si és un visor (onedrive.aspx o guestaccess.aspx) amb share=TOKEN
+  if (cleanUrl.includes('sharepoint.com') && (cleanUrl.includes('onedrive.aspx') || cleanUrl.includes('guestaccess.aspx')) && cleanUrl.includes('share=')) {
+    try {
+      const u = new URL(cleanUrl);
+      const shareToken = u.searchParams.get('share');
+      const userMatch = u.pathname.match(/\/personal\/[^/]+/i);
+      if (userMatch && shareToken) {
+        return `${u.origin}${userMatch[0]}/_layouts/15/download.aspx?share=${shareToken}`;
+      }
+    } catch (_) {}
+  }
+
+  // 2. SharePoint enllaç curt o visor: si conté :u:/ o :f:/ o :b:/ i no té download.aspx ni download=1
+  if (cleanUrl.includes('sharepoint.com') && /:[ufb]:\//i.test(cleanUrl) && !cleanUrl.includes('download.aspx') && !cleanUrl.includes('download=1')) {
+    cleanUrl += (cleanUrl.includes('?') ? '&' : '?') + 'download=1';
+  }
+
+  return cleanUrl;
+}
+
 // Estat global
 const state = {
   lang: localStorage.getItem("mv_lang") || "ca",
@@ -137,12 +166,19 @@ const state = {
   calendars: (() => {
     try {
       const stored = localStorage.getItem("mv_calendars");
-      if (stored) return JSON.parse(stored);
-      const oldUrl = localStorage.getItem("mv_ical_url");
-      if (oldUrl) {
-        return [{ id: '1', name: 'Principal', url: oldUrl, enabled: true }];
+      let list = [];
+      if (stored) {
+        list = JSON.parse(stored);
+      } else {
+        const oldUrl = localStorage.getItem("mv_ical_url");
+        if (oldUrl) {
+          list = [{ id: '1', name: 'Principal', url: oldUrl, enabled: true }];
+        }
       }
-      return [];
+      return list.map(c => ({
+        ...c,
+        url: normalizeCalendarUrl(c.url)
+      }));
     } catch (e) {
       return [];
     }
@@ -1323,19 +1359,56 @@ function parseJSONEvents(jsonText, calName) {
   return events;
 }
 
+const CLOUD_PROXY_URL = 'https://sal53ihpygsdtnsx6jcqud5ugy0jwfnj.lambda-url.eu-west-1.on.aws/api/calendar';
+
+async function fetchCalendarRaw(targetUrl) {
+  const isLocal = window.location.hostname === 'localhost' || 
+                  window.location.hostname === '127.0.0.1';
+
+  // 1. Endpoint principal: en local /api/calendar, a calaixagil.com la Lambda
+  const primaryEndpoint = isLocal 
+    ? '/api/calendar?url=' + encodeURIComponent(targetUrl) + '&_t=' + Date.now()
+    : CLOUD_PROXY_URL + '?url=' + encodeURIComponent(targetUrl) + '&_t=' + Date.now();
+
+  try {
+    const res = await fetch(primaryEndpoint, { cache: 'no-store' });
+    if (res.ok) {
+      return await res.text();
+    }
+    console.warn(`[Calendar Proxy] L'endpoint primari ha respost: HTTP ${res.status}`);
+  } catch (err) {
+    console.warn(`[Calendar Proxy] Error a l'endpoint primari:`, err.message);
+  }
+
+  // 2. Fallback de rescat: si estem a local i el servidor intern no està en marxa, provem la Lambda
+  if (isLocal) {
+    try {
+      const fallbackEndpoint = CLOUD_PROXY_URL + '?url=' + encodeURIComponent(targetUrl) + '&_t=' + Date.now();
+      const resFallback = await fetch(fallbackEndpoint, { cache: 'no-store' });
+      if (resFallback.ok) {
+        return await resFallback.text();
+      }
+    } catch (_) {}
+  }
+
+  return null;
+}
+
 async function fetchSingleCalendar(cal) {
-  const url = (cal.url || '').trim();
+  let url = (cal.url || '').trim();
   const calName = cal.name || 'Calendari';
   if (!url) return [];
 
+  // Normalització automàtica d'adreces de visualització de SharePoint/OneDrive
+  url = normalizeCalendarUrl(url);
+
   try {
-    const endpoint = '/api/calendar?url=' + encodeURIComponent(url) + '&_t=' + Date.now();
-    const res = await fetch(endpoint, { cache: 'no-store' });
-    if (!res.ok) {
-      console.warn(`[Calendar API] Error descarregant ${calName} (${url}): HTTP ${res.status}`);
+    const rawText = await fetchCalendarRaw(url);
+    if (!rawText) {
+      console.warn(`[Calendar API] No s'han pogut descarregar dades de ${calName} (${url})`);
       return [];
     }
-    const rawText = await res.text();
+
     const clean = rawText.replace(/^\uFEFF/, '').trim();
 
     // Auto-detecció de format: JSON o iCal
@@ -1499,9 +1572,26 @@ function setupEventHandlers() {
   const inputNewCalName = document.getElementById('inputNewCalName');
   const inputNewCalUrl = document.getElementById('inputNewCalUrl');
 
+  if (inputNewCalUrl) {
+    const autoTransformSharePoint = () => {
+      const current = inputNewCalUrl.value.trim();
+      const transformed = normalizeCalendarUrl(current);
+      if (transformed && transformed !== current) {
+        inputNewCalUrl.value = transformed;
+        inputNewCalUrl.style.transition = 'border-color 0.3s';
+        inputNewCalUrl.style.borderColor = '#22c55e';
+        setTimeout(() => { inputNewCalUrl.style.borderColor = ''; }, 1200);
+      }
+    };
+    inputNewCalUrl.addEventListener('change', autoTransformSharePoint);
+    inputNewCalUrl.addEventListener('blur', autoTransformSharePoint);
+    inputNewCalUrl.addEventListener('paste', () => setTimeout(autoTransformSharePoint, 60));
+  }
+
   if (btnAddCalendar) {
     btnAddCalendar.addEventListener('click', async () => {
-      const url = inputNewCalUrl.value.trim();
+      const rawUrl = inputNewCalUrl.value.trim();
+      const url = normalizeCalendarUrl(rawUrl);
       let name = inputNewCalName.value.trim();
 
       if (!url) {
@@ -1538,76 +1628,6 @@ function setupEventHandlers() {
 
       await fetchMultiCalendarEvents();
       renderBoard();
-    });
-  }
-
-  const btnBrowseFile = document.getElementById('btnBrowseFile');
-  const inputCalFilePicker = document.getElementById('inputCalFilePicker');
-
-  if (btnBrowseFile && inputCalFilePicker) {
-    btnBrowseFile.addEventListener('click', (e) => {
-      e.preventDefault();
-      inputCalFilePicker.value = '';
-      inputCalFilePicker.click();
-    });
-
-    inputCalFilePicker.addEventListener('change', async (e) => {
-      const file = e.target.files && e.target.files[0];
-      if (!file) return;
-
-      console.log(`[FilePicker] Fitxer seleccionat: ${file.name} (${file.size} bytes)`);
-
-      // 1. Assignar la ruta a l'input URL (per defecte apunten a la carpeta secrets/)
-      inputNewCalUrl.value = 'secrets/' + file.name;
-      inputNewCalUrl.focus();
-
-      // 2. Llegir el fitxer local per auto-completar el nom si està buit
-      const reader = new FileReader();
-      reader.onload = async (evt) => {
-        const text = evt.target.result;
-        try {
-          // Si és JSON
-          if (file.name.toLowerCase().endsWith('.json') || text.trim().startsWith('{') || text.trim().startsWith('[')) {
-            const clean = text.replace(/^\uFEFF/, '').trim();
-            const parsed = JSON.parse(clean);
-            if (!inputNewCalName.value.trim()) {
-              if (parsed.name) {
-                inputNewCalName.value = parsed.name;
-              } else if (parsed.account) {
-                inputNewCalName.value = parsed.account;
-              } else {
-                inputNewCalName.value = file.name.replace(/\.[^.]+$/, '');
-              }
-            }
-          } else {
-            // Si és iCal (.ics)
-            if (!inputNewCalName.value.trim()) {
-              const matchCalName = text.match(/X-WR-CALNAME:(.*)/i);
-              if (matchCalName && matchCalName[1]) {
-                inputNewCalName.value = matchCalName[1].trim();
-              } else {
-                inputNewCalName.value = file.name.replace(/\.[^.]+$/, '');
-              }
-            }
-          }
-        } catch (err) {
-          if (!inputNewCalName.value.trim()) {
-            inputNewCalName.value = file.name.replace(/\.[^.]+$/, '');
-          }
-        }
-
-        // 3. Si és un fitxer triat des d'una altra carpeta, en desem una còpia a /secrets/ via el servidor
-        try {
-          await fetch('/api/upload-calendar?name=' + encodeURIComponent(file.name), {
-            method: 'POST',
-            body: file
-          });
-          console.log(`[FilePicker] Fitxer sincronitzat a secrets/${file.name}`);
-        } catch (uploadErr) {
-          console.warn('[FilePicker] Nota de sincronització:', uploadErr);
-        }
-      };
-      reader.readAsText(file);
     });
   }
 
@@ -1817,8 +1837,6 @@ function applyI18nLabels() {
   if (helpCals) helpCals.textContent = t.calendarsHelpText;
   const inputNewCalUrl = document.getElementById('inputNewCalUrl');
   if (inputNewCalUrl && t.calPlaceholder) inputNewCalUrl.placeholder = t.calPlaceholder;
-  const btnBrowseFile = document.getElementById('btnBrowseFile');
-  if (btnBrowseFile && t.btnBrowseTitle) btnBrowseFile.title = t.btnBrowseTitle;
 
   document.getElementById('lblDemoMode').textContent = t.lblDemoMode;
   
