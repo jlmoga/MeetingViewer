@@ -1238,20 +1238,36 @@ function saveCalendars() {
  */
 function parseJSONEvents(jsonText, calName) {
   let items = [];
+  let headerName = '';
+  let headerAccount = '';
+  let headerOwner = '';
+  let headerSource = '';
+
   try {
     const clean = (typeof jsonText === 'string' ? jsonText : '').replace(/^\uFEFF/, '').trim();
     const parsed = typeof jsonText === 'object' ? jsonText : JSON.parse(clean);
     if (Array.isArray(parsed)) {
       items = parsed;
-    } else if (parsed && Array.isArray(parsed.value)) {
-      items = parsed.value;
-    } else if (parsed && Array.isArray(parsed.events)) {
-      items = parsed.events;
+    } else if (parsed && typeof parsed === 'object') {
+      if (parsed.name) headerName = parsed.name.trim();
+      if (parsed.account) headerAccount = parsed.account.trim();
+      if (parsed.owner) headerOwner = parsed.owner.trim();
+      if (parsed.source) headerSource = parsed.source.trim();
+
+      if (Array.isArray(parsed.events)) {
+        items = parsed.events;
+      } else if (Array.isArray(parsed.value)) {
+        items = parsed.value;
+      }
     }
   } catch (e) {
     console.error(`[JSON Calendar] Error parsejant dades de ${calName}:`, e);
     return [];
   }
+
+  const effectiveCalName = (calName && !/^Calendari\s*\d*$/i.test(calName) && !/^Calendario\s*\d*$/i.test(calName)) 
+    ? calName 
+    : (headerName || calName || 'Calendari');
 
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
@@ -1287,12 +1303,16 @@ function parseJSONEvents(jsonText, calName) {
     const eventTime = eDate.getTime() || sDate.getTime();
     if (!isNaN(eventTime) && eventTime >= startOfToday) {
       events.push({
+        id: item.id || '',
         title,
         location,
         start,
         end,
         isAllDay,
-        calendarName: calName
+        calendarName: effectiveCalName,
+        source: item.source || headerSource || 'json',
+        account: headerAccount,
+        owner: headerOwner
       });
     }
   });
