@@ -1,6 +1,12 @@
 # Dependencies
 node_modules/
 
+# Secrets & credentials
+secrets/
+/secrets
+*.env
+*.env.*
+
 # OS metadata
 .DS_Store
 Thumbs.db
