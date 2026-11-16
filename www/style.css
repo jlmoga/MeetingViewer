@@ -192,6 +192,21 @@ html, body {
   pointer-events: none;
 }
 
+/* En dispositius tàctils o mòbils, millorar la visibilitat dels botons de capçalera */
+@media (hover: none) {
+  .btn-config-discrete {
+    opacity: 0.70;
+  }
+}
+
+/* Ocultar la finestra neta de Windows i la pantalla completa en mòbils / tauletes */
+@media (max-width: 768px), (pointer: coarse) and (max-height: 600px) {
+  #btnOpenAppWindow,
+  #btnToggleFullscreen {
+    display: none !important;
+  }
+}
+
 /* ==========================================
    SELECTOR RÀPID DE CALENDARIS (PEU INFERIOR)
    ========================================== */
@@ -339,6 +354,10 @@ html, body {
   gap: 12px;
 }
 
+.head-subline {
+  display: contents;
+}
+
 .col-head {
   font-family: Arial, Helvetica, sans-serif;
   font-size: 0.8rem;
@@ -348,11 +367,11 @@ html, body {
   text-transform: uppercase;
 }
 
-.col-time   { width: 220px; flex-shrink: 0; }
-.col-event  { flex: 3; }
-.col-loc    { flex: 2; }
-.col-status { width: 230px; flex-shrink: 0; }
-.col-led    { width: 36px; flex-shrink: 0; text-align: center; }
+.col-time   { order: 1; width: 220px; flex-shrink: 0; }
+.col-event  { order: 2; flex: 3; }
+.col-loc    { order: 3; flex: 2; }
+.col-status { order: 4; width: 230px; flex-shrink: 0; }
+.col-led    { order: 5; width: 36px; flex-shrink: 0; text-align: center; }
 
 /* ==========================================
    COS DEL PANELL (FILES MECÀNIQUES)
@@ -837,6 +856,24 @@ input:checked + .slider:before {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: 3px;
+  padding: 1px 4px;
+  user-select: text;
+}
+
+.cal-url-hint:hover {
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  text-decoration: underline;
+}
+
+.cal-url-hint.copied {
+  color: #22c55e !important;
+  background: rgba(34, 197, 94, 0.18) !important;
+  font-weight: 700;
+  text-decoration: none !important;
 }
 
 .btn-del-cal {
@@ -874,4 +911,277 @@ input:checked + .slider:before {
   display: flex;
   gap: 8px;
   align-items: center;
+}
+
+/* ============================================================
+   RESPONSIVE DESIGN: MÒBIL VERTICAL (PORTRAIT)
+   ============================================================ */
+@media (max-width: 650px) and (orientation: portrait), (max-width: 550px) {
+  /* 1. Marc general i contenidor */
+  .station-board-container {
+    padding: 6px 6px;
+    border-width: 4px;
+    border-radius: 4px;
+  }
+
+  /* 2. Capçalera en dues línies a 1.5x / 2x d'alçada */
+  .board-header {
+    flex-wrap: wrap !important;
+    padding: 6px 10px !important;
+    gap: 6px !important;
+    margin-bottom: 4px !important;
+  }
+
+  .header-left {
+    order: 1 !important;
+    flex: 1 !important;
+    min-width: 0 !important;
+  }
+
+  .board-title {
+    font-size: 1.05rem !important;
+    letter-spacing: 2px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .station-crest {
+    font-size: 0.9rem !important;
+  }
+
+  .header-right {
+    order: 2 !important;
+    gap: 6px !important;
+  }
+
+  .connection-status {
+    padding: 2px 6px !important;
+  }
+
+  .connection-status .status-text {
+    display: none !important; /* Només mostrem el punt LED d'estat per estalviar espai */
+  }
+
+  .header-center {
+    order: 3 !important;
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 3px 10px !important;
+    gap: 12px !important;
+  }
+
+  .clock-time {
+    font-size: 1.25rem !important;
+  }
+
+  .clock-date {
+    font-size: 0.78rem !important;
+  }
+
+  /* 3. Capçaleres de columnes mecàniques en 2 línies */
+  .board-column-headers {
+    flex-direction: column !important;
+    padding: 3px 8px !important;
+    gap: 2px !important;
+    margin-bottom: 2px !important;
+  }
+
+  .head-subline {
+    display: flex !important;
+    width: 100% !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+  }
+
+  .head-subline-top .col-time {
+    width: auto !important;
+    order: 1 !important;
+    font-size: 0.72rem !important;
+  }
+
+  .head-subline-top .col-status {
+    width: auto !important;
+    order: 2 !important;
+    font-size: 0.72rem !important;
+    margin-left: auto !important;
+    margin-right: 28px !important;
+  }
+
+  .head-subline-top .col-led {
+    width: 20px !important;
+    order: 3 !important;
+  }
+
+  .head-subline-bottom .col-event {
+    flex: 1 !important;
+    order: 1 !important;
+    font-size: 0.72rem !important;
+  }
+
+  .head-subline-bottom .col-loc {
+    width: auto !important;
+    flex: none !important;
+    order: 2 !important;
+    font-size: 0.72rem !important;
+  }
+
+  /* 4. Files del panell en mode DOBLE LÍNIA */
+  .board-body {
+    gap: 4px !important;
+    padding: 2px 0 !important;
+  }
+
+  .board-row.double-line {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    padding: 4px 6px !important;
+    gap: 3px !important;
+    min-height: 52px !important;
+    max-height: 68px !important;
+  }
+
+  .row-subline {
+    display: flex !important;
+    align-items: center !important;
+    width: 100% !important;
+    height: 50% !important;
+  }
+
+  .row-subline-top {
+    justify-content: space-between !important;
+  }
+
+  .row-subline-bottom {
+    justify-content: space-between !important;
+  }
+
+  .board-row.double-line .row-col-time {
+    width: auto !important;
+    flex: none !important;
+  }
+
+  .board-row.double-line .row-col-status {
+    width: auto !important;
+    flex: none !important;
+    margin-left: auto !important;
+    margin-right: 6px !important;
+  }
+
+  .board-row.double-line .row-col-led {
+    width: 22px !important;
+    flex: none !important;
+  }
+
+  .board-row.double-line .row-col-event {
+    flex: 1 !important;
+    overflow: hidden !important;
+  }
+
+  .board-row.double-line .row-col-loc {
+    width: auto !important;
+    flex: none !important;
+    margin-left: 6px !important;
+  }
+
+  /* 5. Peu inferior en 2 línies */
+  .calendar-filter-bar {
+    height: auto !important;
+    min-height: 64px !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    padding: 5px 8px !important;
+    gap: 4px !important;
+    margin-top: 3px !important;
+  }
+
+  .filter-pills {
+    width: 100% !important;
+    order: 1 !important;
+  }
+
+  .filter-pill {
+    padding: 3px 8px !important;
+    font-size: 0.72rem !important;
+  }
+
+  .brand-link {
+    order: 2 !important;
+    margin: 0 auto !important; /* Centrat a la segona línia */
+    height: 24px !important;
+    padding: 2px 8px !important;
+  }
+
+  .brand-text {
+    font-size: 0.65rem !important;
+  }
+}
+
+/* ============================================================
+   RESPONSIVE DESIGN: MÒBIL APAÏSAT (LANDSCAPE)
+   ============================================================ */
+@media (max-height: 520px) and (orientation: landscape), (max-height: 480px) {
+  .station-board-container {
+    padding: 4px 8px !important;
+    border-width: 5px !important;
+  }
+
+  .board-header {
+    padding: 3px 10px !important;
+    margin-bottom: 2px !important;
+  }
+
+  .board-title {
+    font-size: 1.05rem !important;
+    letter-spacing: 2px !important;
+  }
+
+  .station-crest {
+    font-size: 0.85rem !important;
+  }
+
+  .header-center {
+    padding: 2px 10px !important;
+    gap: 8px !important;
+  }
+
+  .clock-time {
+    font-size: 1.15rem !important;
+  }
+
+  .clock-date {
+    font-size: 0.75rem !important;
+  }
+
+  .calendar-filter-bar {
+    height: 32px !important;
+    padding: 2px 8px !important;
+    margin-top: 2px !important;
+  }
+
+  .brand-link {
+    height: 24px !important;
+  }
+
+  .board-column-headers {
+    padding: 2px 8px !important;
+    margin-bottom: 2px !important;
+  }
+
+  .col-head {
+    font-size: 0.7rem !important;
+  }
+
+  .board-body {
+    gap: 3px !important;
+    padding: 1px 0 !important;
+  }
+
+  .board-row {
+    min-height: 26px !important;
+    max-height: 36px !important;
+    padding: 2px 6px !important;
+    gap: 6px !important;
+  }
 }

@@ -42,7 +42,9 @@ const I18N = {
     optRefresh120: "Cada 2 minuts",
     optRefresh300: "Cada 5 minuts",
     lblSound: "Efecte de so mecànic de les lletres:",
-    btnApplyAndClose: "Acceptar i tancar"
+    btnApplyAndClose: "Acceptar i tancar",
+    copiedToClipboard: "✓ Copiat al portapapers!",
+    copyUrlTooltip: "Clica per copiar l'enllaç al portapapers"
   },
   es: {
     boardTitle: "PANEL DE INFORMACIÓN",
@@ -80,7 +82,9 @@ const I18N = {
     optRefresh120: "Cada 2 minutos",
     optRefresh300: "Cada 5 minutos",
     lblSound: "Efecto de sonido mecánico de las letras:",
-    btnApplyAndClose: "Aceptar y cerrar"
+    btnApplyAndClose: "Aceptar y cerrar",
+    copiedToClipboard: "✓ ¡Copiado al portapapeles!",
+    copyUrlTooltip: "Haz clic para copiar el enlace al portapapeles"
   },
   en: {
     boardTitle: "MEETING INFORMATION",
@@ -118,7 +122,9 @@ const I18N = {
     optRefresh120: "Every 2 minutes",
     optRefresh300: "Every 5 minutes",
     lblSound: "Mechanical letter sound effect:",
-    btnApplyAndClose: "Apply and Close"
+    btnApplyAndClose: "Apply and Close",
+    copiedToClipboard: "✓ Copied to clipboard!",
+    copyUrlTooltip: "Click to copy link to clipboard"
   }
 };
 
@@ -558,48 +564,104 @@ function updateFlapGroup(flapUnits, text, maxLength, colorClass = '') {
 
 function buildBoardStructure() {
   const boardBody = document.getElementById('boardBody');
+  if (!boardBody) return;
   boardBody.innerHTML = '';
   state.boardRows = [];
 
   const bodyHeight = boardBody.clientHeight || (window.innerHeight - 170);
-  const bodyWidth = boardBody.clientWidth || (window.innerWidth - 40);
+  const bodyWidth = boardBody.clientWidth || (window.innerWidth - 30);
 
-  // Alçada òptima de fila per a màxima visibilitat
-  const idealRowHeight = Math.max(42, Math.min(56, Math.floor(bodyHeight / 8)));
-  state.rowsCount = Math.max(4, Math.floor(bodyHeight / idealRowHeight));
+  // Detecció d'orientació i dispositiu mòbil
+  const isPortraitMobile = (window.innerWidth <= 650 && window.innerHeight >= window.innerWidth) || 
+                           (window.innerWidth <= 550);
+  const isLandscapeMobile = (window.innerHeight <= 520 && window.innerWidth > window.innerHeight);
 
-  // Ample òptim de fitxa: entre 20px i 26px
-  const flapWidth = Math.max(19, Math.min(27, Math.floor(bodyWidth / 75)));
+  let flapWidth;
+  let idealRowHeight;
+  let rowHeightForFlaps;
 
-  state.colLengths.time = 10;
-  state.colLengths.status = 11;
+  if (isPortraitMobile) {
+    // ----------------------------------------------------
+    // MODE MÒBIL VERTICAL: DOBLE LÍNIA PER CONVOCATÒRIA
+    // ----------------------------------------------------
+    // Reducció ~25% de fitxa: entre 14px i 18px d'ample
+    flapWidth = Math.max(14, Math.min(18, Math.floor(bodyWidth / 22)));
+    idealRowHeight = Math.max(52, Math.min(68, Math.floor(bodyHeight / 8)));
+    state.rowsCount = Math.max(4, Math.floor(bodyHeight / idealRowHeight));
+    rowHeightForFlaps = Math.floor(idealRowHeight / 2.2);
 
-  const timeColWidth = state.colLengths.time * (flapWidth + 3);
-  const statusColWidth = state.colLengths.status * (flapWidth + 3);
+    // Línia 1: HORA (10 caràcters) + ESTAT (7 caràcters) + LED
+    state.colLengths.time = 10;
+    state.colLengths.status = 7;
 
-  // Sincronitzar amples de capçaleres de columna
+    // Línia 2: CONVOCATÒRIA + SALA (repartits per omplir l'ample complet)
+    const totalLine2Chars = Math.max(16, Math.floor((bodyWidth - 20) / (flapWidth + 3)));
+    state.colLengths.loc = Math.max(5, Math.min(7, Math.floor(totalLine2Chars * 0.28)));
+    state.colLengths.event = Math.max(11, totalLine2Chars - state.colLengths.loc);
+
+  } else if (isLandscapeMobile) {
+    // ----------------------------------------------------
+    // MODE MÒBIL APAÏSAT: COMPACTE PER ENCABIR MÉS FILES
+    // ----------------------------------------------------
+    flapWidth = Math.max(15, Math.min(20, Math.floor(bodyWidth / 75)));
+    idealRowHeight = Math.max(30, Math.min(38, Math.floor(bodyHeight / 7)));
+    state.rowsCount = Math.max(6, Math.floor(bodyHeight / idealRowHeight));
+    rowHeightForFlaps = idealRowHeight;
+
+    state.colLengths.time = 10;
+    state.colLengths.status = 9;
+    const timeColWidth = state.colLengths.time * (flapWidth + 3);
+    const statusColWidth = state.colLengths.status * (flapWidth + 3);
+
+    const remWidth = Math.max(260, bodyWidth - (timeColWidth + statusColWidth + 30 + 50));
+    const totalFlexChars = Math.floor(remWidth / (flapWidth + 3));
+    state.colLengths.event = Math.max(14, Math.floor(totalFlexChars * 0.64));
+    state.colLengths.loc = Math.max(8, Math.floor(totalFlexChars * 0.36));
+
+  } else {
+    // ----------------------------------------------------
+    // MODE ESTÀNDARD: ESCRIPTORI / MONITOR / PANTALLA GRAN
+    // ----------------------------------------------------
+    idealRowHeight = Math.max(42, Math.min(56, Math.floor(bodyHeight / 8)));
+    state.rowsCount = Math.max(4, Math.floor(bodyHeight / idealRowHeight));
+    rowHeightForFlaps = idealRowHeight;
+
+    flapWidth = Math.max(19, Math.min(27, Math.floor(bodyWidth / 75)));
+    state.colLengths.time = 10;
+    state.colLengths.status = 11;
+
+    const timeColWidth = state.colLengths.time * (flapWidth + 3);
+    const statusColWidth = state.colLengths.status * (flapWidth + 3);
+
+    const remainingWidth = Math.max(300, bodyWidth - (timeColWidth + statusColWidth + 36 + 70));
+    const totalFlexChars = Math.floor(remainingWidth / (flapWidth + 3));
+    state.colLengths.event = Math.max(16, Math.floor(totalFlexChars * 0.62));
+    state.colLengths.loc = Math.max(10, Math.floor(totalFlexChars * 0.38));
+  }
+
   const headTime = document.getElementById('colHeadTime');
-  if (headTime) headTime.style.width = `${timeColWidth}px`;
   const headStatus = document.getElementById('colHeadStatus');
-  if (headStatus) headStatus.style.width = `${statusColWidth}px`;
 
-  // Calcular quantes fitxes hi caben a CONVOCATÒRIA i LLOC per omplir completament l'espai
-  // Ample fix: TIME + STATUS + LED (36px) + Gaps i padding (~70px)
-  const remainingWidth = Math.max(300, bodyWidth - (timeColWidth + statusColWidth + 36 + 70));
-  const totalFlexChars = Math.floor(remainingWidth / (flapWidth + 3));
-  
-  // 60% per a CONVOCATÒRIA, 40% per a LLOC
-  state.colLengths.event = Math.max(16, Math.floor(totalFlexChars * 0.62));
-  state.colLengths.loc = Math.max(10, Math.floor(totalFlexChars * 0.38));
+  if (!isPortraitMobile) {
+    const timeColWidth = state.colLengths.time * (flapWidth + 3);
+    const statusColWidth = state.colLengths.status * (flapWidth + 3);
+    if (headTime) headTime.style.width = `${timeColWidth}px`;
+    if (headStatus) headStatus.style.width = `${statusColWidth}px`;
+  } else {
+    if (headTime) headTime.style.width = '';
+    if (headStatus) headStatus.style.width = '';
+  }
 
   for (let r = 0; r < state.rowsCount; r++) {
     const rowDiv = document.createElement('div');
-    rowDiv.className = 'board-row';
+    rowDiv.className = isPortraitMobile ? 'board-row double-line' : 'board-row';
 
     // Columna HORA
     const colTime = document.createElement('div');
     colTime.className = 'row-col-time';
-    colTime.style.width = `${timeColWidth}px`;
+    if (!isPortraitMobile) {
+      colTime.style.width = `${state.colLengths.time * (flapWidth + 3)}px`;
+    }
     const timeFlaps = [];
     for (let i = 0; i < state.colLengths.time; i++) {
       const flap = createFlapUnit();
@@ -630,7 +692,9 @@ function buildBoardStructure() {
     // Columna ESTAT
     const colStatus = document.createElement('div');
     colStatus.className = 'row-col-status';
-    colStatus.style.width = `${statusColWidth}px`;
+    if (!isPortraitMobile) {
+      colStatus.style.width = `${state.colLengths.status * (flapWidth + 3)}px`;
+    }
     const statusFlaps = [];
     for (let i = 0; i < state.colLengths.status; i++) {
       const flap = createFlapUnit();
@@ -645,11 +709,36 @@ function buildBoardStructure() {
     led.className = 'led-indicator';
     colLed.appendChild(led);
 
-    rowDiv.appendChild(colTime);
-    rowDiv.appendChild(colEvent);
-    rowDiv.appendChild(colLoc);
-    rowDiv.appendChild(colStatus);
-    rowDiv.appendChild(colLed);
+    if (isPortraitMobile) {
+      // -------------------------------------------------------------
+      // DISPOSICIÓ EN DOBLE LÍNIA (MÒBIL VERTICAL):
+      // Línia 1: HORA + ESTAT + LED
+      // Línia 2: CONVOCATÒRIA + SALA
+      // -------------------------------------------------------------
+      const line1 = document.createElement('div');
+      line1.className = 'row-subline row-subline-top';
+      line1.appendChild(colTime);
+      line1.appendChild(colStatus);
+      line1.appendChild(colLed);
+
+      const line2 = document.createElement('div');
+      line2.className = 'row-subline row-subline-bottom';
+      line2.appendChild(colEvent);
+      line2.appendChild(colLoc);
+
+      rowDiv.appendChild(line1);
+      rowDiv.appendChild(line2);
+    } else {
+      // -------------------------------------------------------------
+      // DISPOSICIÓ EN LÍNIA ÚNICA (DESKTOP I MÒBIL APAÏSAT):
+      // [HORA] [CONVOCATÒRIA] [LLOC] [ESTAT] [LED]
+      // -------------------------------------------------------------
+      rowDiv.appendChild(colTime);
+      rowDiv.appendChild(colEvent);
+      rowDiv.appendChild(colLoc);
+      rowDiv.appendChild(colStatus);
+      rowDiv.appendChild(colLed);
+    }
 
     boardBody.appendChild(rowDiv);
 
@@ -663,14 +752,14 @@ function buildBoardStructure() {
   }
 
   // Ajustar estil i mida de font de totes les fitxes
-  adjustFlapDimensions(flapWidth, idealRowHeight);
+  adjustFlapDimensions(flapWidth, rowHeightForFlaps);
 }
 
 function adjustFlapDimensions(flapWidth, rowHeight) {
-  // Alçada de la fitxa és ~82% de l'alçada de la fila
-  const flapHeight = Math.max(28, Math.floor(rowHeight * 0.82));
-  // Mida de lletra: gran i ben proporcionada (omplint el 75% de la fitxa)
-  const fontSize = Math.max(16, Math.min(26, Math.floor(flapHeight * 0.72)));
+  // Alçada de la fitxa és ~85% de l'alçada de la fila/sublínia
+  const flapHeight = Math.max(20, Math.floor(rowHeight * 0.85));
+  // Mida de lletra: ben proporcionada omplint la fitxa
+  const fontSize = Math.max(12, Math.min(26, Math.floor(flapHeight * 0.72)));
 
   document.querySelectorAll('.flap-unit').forEach(el => {
     el.style.width = `${flapWidth}px`;
@@ -1362,11 +1451,14 @@ function parseJSONEvents(jsonText, calName) {
 const CLOUD_PROXY_URL = 'https://sal53ihpygsdtnsx6jcqud5ugy0jwfnj.lambda-url.eu-west-1.on.aws/api/calendar';
 
 async function fetchCalendarRaw(targetUrl) {
-  const isLocal = window.location.hostname === 'localhost' || 
-                  window.location.hostname === '127.0.0.1';
+  const isCordova = !!window.cordova || window.location.protocol === 'file:';
+  // Només considerem servidor intern Node.js si estem en entorn local de desenvolupament (ex: localhost:3000)
+  const isLocalNodeServer = !isCordova && 
+                            (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && 
+                            Boolean(window.location.port);
 
-  // 1. Endpoint principal: en local /api/calendar, a calaixagil.com la Lambda
-  const primaryEndpoint = isLocal 
+  // 1. Endpoint principal: en local Node usem /api/calendar, a mòbil (Cordova) o calaixagil.com usem la Lambda directament
+  const primaryEndpoint = isLocalNodeServer 
     ? '/api/calendar?url=' + encodeURIComponent(targetUrl) + '&_t=' + Date.now()
     : CLOUD_PROXY_URL + '?url=' + encodeURIComponent(targetUrl) + '&_t=' + Date.now();
 
@@ -1380,8 +1472,8 @@ async function fetchCalendarRaw(targetUrl) {
     console.warn(`[Calendar Proxy] Error a l'endpoint primari:`, err.message);
   }
 
-  // 2. Fallback de rescat: si estem a local i el servidor intern no està en marxa, provem la Lambda
-  if (isLocal) {
+  // 2. Fallback de rescat: si estàvem en servidor local Node i no ha respost, provem la Lambda
+  if (isLocalNodeServer) {
     try {
       const fallbackEndpoint = CLOUD_PROXY_URL + '?url=' + encodeURIComponent(targetUrl) + '&_t=' + Date.now();
       const resFallback = await fetch(fallbackEndpoint, { cache: 'no-store' });
@@ -1469,6 +1561,7 @@ function renderCalendarsList() {
   const container = document.getElementById('calendarsListContainer');
   if (!container) return;
 
+  const t = I18N[state.lang] || I18N.ca;
   container.innerHTML = '';
   if (!state.calendars || state.calendars.length === 0) {
     const emptyMsg = document.createElement('div');
@@ -1520,6 +1613,37 @@ function renderCalendarsList() {
     const urlEl = document.createElement('span');
     urlEl.className = 'cal-url-hint';
     urlEl.textContent = cal.url || '';
+    urlEl.title = t.copyUrlTooltip || "Clica per copiar l'enllaç al portapapers";
+
+    urlEl.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const textToCopy = cal.url || '';
+      if (!textToCopy) return;
+
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(textToCopy);
+        } else {
+          const tempInput = document.createElement('textarea');
+          tempInput.value = textToCopy;
+          document.body.appendChild(tempInput);
+          tempInput.select();
+          document.execCommand('copy');
+          document.body.removeChild(tempInput);
+        }
+
+        const originalText = cal.url || '';
+        urlEl.textContent = t.copiedToClipboard || "✓ Copiat al portapapers!";
+        urlEl.classList.add('copied');
+
+        setTimeout(() => {
+          urlEl.textContent = originalText;
+          urlEl.classList.remove('copied');
+        }, 1800);
+      } catch (err) {
+        console.warn('Error copiant al portapapers:', err);
+      }
+    });
 
     info.appendChild(nameEl);
     info.appendChild(urlEl);
@@ -1588,46 +1712,70 @@ function setupEventHandlers() {
     inputNewCalUrl.addEventListener('paste', () => setTimeout(autoTransformSharePoint, 60));
   }
 
+  const addCalendarFromInputs = async () => {
+    if (!inputNewCalUrl) return false;
+    const rawUrl = inputNewCalUrl.value.trim();
+    if (!rawUrl) return false;
+
+    const url = normalizeCalendarUrl(rawUrl);
+    if (!url) return false;
+
+    let name = inputNewCalName ? inputNewCalName.value.trim() : '';
+    if (!name) {
+      name = (state.lang === 'ca' ? "Calendari " : (state.lang === 'es' ? "Calendario " : "Calendar ")) + (state.calendars.length + 1);
+    }
+
+    const isJson = url.toLowerCase().includes('.json');
+    const newCal = {
+      id: Date.now().toString(),
+      name: name,
+      url: url,
+      type: isJson ? 'json' : 'ical',
+      enabled: true
+    };
+
+    state.calendars.push(newCal);
+    saveCalendars();
+    state.demoMode = false;
+    localStorage.setItem("mv_demo", "false");
+    if (toggleDemo) toggleDemo.checked = false;
+
+    if (inputNewCalName) inputNewCalName.value = '';
+    if (inputNewCalUrl) inputNewCalUrl.value = '';
+    renderCalendarsList();
+
+    await fetchMultiCalendarEvents();
+    renderBoard();
+    return true;
+  };
+
   if (btnAddCalendar) {
     btnAddCalendar.addEventListener('click', async () => {
-      const rawUrl = inputNewCalUrl.value.trim();
-      const url = normalizeCalendarUrl(rawUrl);
-      let name = inputNewCalName.value.trim();
-
-      if (!url) {
+      const added = await addCalendarFromInputs();
+      if (!added && inputNewCalUrl) {
         inputNewCalUrl.focus();
         inputNewCalUrl.style.borderColor = '#ef4444';
         setTimeout(() => {
           inputNewCalUrl.style.borderColor = '';
         }, 1500);
-        return;
       }
+    });
+  }
 
-      if (!name) {
-        name = (state.lang === 'ca' ? "Calendari " : "Calendario ") + (state.calendars.length + 1);
+  if (inputNewCalUrl) {
+    inputNewCalUrl.addEventListener('keydown', async (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        await addCalendarFromInputs();
       }
-
-      const isJson = url.toLowerCase().includes('.json');
-      const newCal = {
-        id: Date.now().toString(),
-        name: name,
-        url: url,
-        type: isJson ? 'json' : 'ical',
-        enabled: true
-      };
-
-      state.calendars.push(newCal);
-      saveCalendars();
-      state.demoMode = false;
-      localStorage.setItem("mv_demo", "false");
-      if (toggleDemo) toggleDemo.checked = false;
-
-      inputNewCalName.value = '';
-      inputNewCalUrl.value = '';
-      renderCalendarsList();
-
-      await fetchMultiCalendarEvents();
-      renderBoard();
+    });
+  }
+  if (inputNewCalName) {
+    inputNewCalName.addEventListener('keydown', async (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        await addCalendarFromInputs();
+      }
     });
   }
 
@@ -1661,7 +1809,14 @@ function setupEventHandlers() {
     if (modal) modal.classList.remove('active');
   };
   if (btnClose) btnClose.addEventListener('click', closeModal);
-  if (btnApply) btnApply.addEventListener('click', closeModal);
+  if (btnApply) {
+    btnApply.addEventListener('click', async (e) => {
+      if (inputNewCalUrl && inputNewCalUrl.value.trim()) {
+        await addCalendarFromInputs();
+      }
+      closeModal(e);
+    });
+  }
 
   if (modal) {
     modal.addEventListener('click', (e) => {
@@ -1717,7 +1872,18 @@ function setupEventHandlers() {
 
   // Mode Finestra Neta (Sense barres de navegador per encaixar amb Win + Fletxes)
   const btnOpenAppWindow = document.getElementById('btnOpenAppWindow');
-  if (btnOpenAppWindow) {
+  
+  // Detecció de dispositiu mòbil / tauleta o entorn APK / WebView
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                   ('ontouchstart' in window && window.innerWidth <= 1024) ||
+                   (window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
+
+  if (isMobile) {
+    if (btnOpenAppWindow) btnOpenAppWindow.style.display = 'none';
+    if (btnToggleFullscreen) btnToggleFullscreen.style.display = 'none';
+  }
+
+  if (btnOpenAppWindow && !isMobile) {
     const isCleanWindow = window.opener != null || 
                           window.matchMedia('(display-mode: standalone)').matches ||
                           window.name === 'MeetingViewerClean';

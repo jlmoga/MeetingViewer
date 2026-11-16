@@ -16,6 +16,15 @@ desktop.ini
 *.log
 npm-debug.log*
 
+# Android & Builds
+APK/
+/APK
+*.apk
+
 # Editor configurations
 .vscode/
 .idea/
+
+# Backend (AWS Lambda local backup)
+Backend/
+/Backend/
